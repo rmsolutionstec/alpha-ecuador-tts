@@ -1,4 +1,4 @@
-# Studio TTS Latino
+# Alpha Studio TTS Latino
 
 Aplicacion gratuita y de codigo abierto para convertir guiones en narraciones MP3 con
 voces en espanol latino. Es un producto de **Alpha Ecuador**, desarrollado por
@@ -45,7 +45,7 @@ Tambien puedes iniciar la aplicacion con:
 ## Generar audio por terminal
 
 ```powershell
-python tts.py --text "Hola, bienvenido a Studio TTS Latino" --provider edge --output saludo.mp3
+python tts.py --text "Hola, bienvenido a Alpha Studio TTS Latino" --provider edge --output saludo.mp3
 ```
 
 ```powershell
@@ -65,7 +65,7 @@ python tts.py --text "Alpha Ecuador y OpenAI" --pronunciation-file examples/pron
 ## Estructura del proyecto
 
 ```text
-studio-tts-latino/
+alpha-studio-tts-latino/
 ├── studio_tts_latino/
 │   ├── core.py                 Motor de sintesis y audio
 │   ├── cli.py                  Interfaz de comandos
@@ -115,7 +115,7 @@ python -m pip install ".[build]"
 .\scripts\build_windows.ps1
 ```
 
-El resultado se crea en `dist/StudioTTSLatino`. FFmpeg no se incluye automaticamente;
+El resultado se crea en `dist/AlphaStudioTTSLatino`. FFmpeg no se incluye automaticamente;
 debe instalarse por separado cuando el usuario necesite mastering o el proveedor local.
 
 ## Privacidad y limites

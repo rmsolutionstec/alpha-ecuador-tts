@@ -2,6 +2,23 @@
 
 Este archivo registra cambios importantes del proyecto.
 
+## Pendiente de publicación
+
+### Cambiado
+
+- La interfaz de escritorio migra de Tkinter a PySide6/Qt, con jerarquía visual,
+  tarjetas, controles de voz agrupados y una acción de exportación destacada.
+- La configuración avanzada se concentra en una sección desplegable para simplificar
+  el flujo principal de guion, voz y exportación.
+- Se añadieron contador de palabras/caracteres y mensajes de estado visuales.
+- Cambio de marca visible a **Alpha Studio TTS Latino**, incluido el ejecutable
+  `AlphaStudioTTSLatino.exe`, los comandos nuevos y la carpeta local de preferencias.
+- Paso 3 se movió a la parte inferior izquierda y Paso 2 ocupa toda la columna derecha.
+
+### Corregido
+
+- El texto de los ajustes avanzados ya no se recorta en la interfaz de Windows.
+
 ## 0.2.0 - 2026-08-25
 
 ### Agregado

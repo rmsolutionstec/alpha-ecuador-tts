@@ -2,7 +2,7 @@
 
 ## Principio general
 
-Studio TTS Latino es una aplicacion de escritorio gratuita. El motor se mantiene
+Alpha Studio TTS Latino es una aplicacion de escritorio gratuita. El motor se mantiene
 independiente de la interfaz para facilitar pruebas, automatizacion y una futura demo web.
 
 ```text
@@ -20,8 +20,9 @@ normalizacion de texto, sintesis y mastering.
 `studio_tts_latino/cli.py` valida argumentos y presenta mensajes claros para errores
 de archivos, valores invalidos y problemas de generacion.
 
-`studio_tts_latino/gui.py` contiene la interfaz Tkinter, ejecuta sintesis en hilos de
-trabajo y mantiene los controles de la ventana en el hilo principal.
+`studio_tts_latino/gui.py` contiene la interfaz moderna basada en PySide6/Qt. Ejecuta
+la sintesis en hilos de trabajo y vuelve al hilo principal mediante señales Qt para
+actualizar el progreso, los mensajes y la reproducción de preescuchas con seguridad.
 
 `studio_tts_latino/settings.py` guarda preferencias y registros fuera del repositorio.
 
@@ -32,9 +33,9 @@ trabajo y mantiene los controles de la ventana en el hilo principal.
 En Windows, preferencias y registros se guardan bajo:
 
 ```text
-%LOCALAPPDATA%\StudioTTSLatino\
+%LOCALAPPDATA%\AlphaStudioTTSLatino\
 ├── preferences.json
-└── logs\studio-tts-latino.log
+└── logs\alpha-studio-tts-latino.log
 ```
 
 No se guardan los guiones escritos por el usuario en preferencias ni registros.

@@ -2,7 +2,7 @@
 
 ## Compromiso
 
-Studio TTS Latino es gratuito, abierto y utilizable sin una cuenta. Las funciones no
+Alpha Studio TTS Latino es gratuito, abierto y utilizable sin una cuenta. Las funciones no
 se bloquean detras de pagos, publicidad o limites artificiales en la version de escritorio.
 
 ## Financiamiento voluntario

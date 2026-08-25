@@ -1,472 +1,493 @@
-"""Interfaz profesional para texto a voz con enfoque en locucion latina."""
+"""Interfaz Qt moderna para Alpha Studio TTS Latino."""
 from __future__ import annotations
 
-import os
 import logging
-import threading
+import os
+import sys
 import tempfile
-import tkinter as tk
+import threading
 import webbrowser
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
 from urllib.parse import urlparse
 from uuid import uuid4
 
+from PySide6.QtCore import Qt, QUrl, Signal, Slot
+from PySide6.QtGui import QDesktopServices
+from PySide6.QtWidgets import (
+    QApplication, QCheckBox, QComboBox, QFileDialog, QFormLayout, QFrame,
+    QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
+    QMessageBox, QProgressBar, QPushButton, QScrollArea, QSlider, QSplitter,
+    QTextEdit, QToolButton, QVBoxLayout, QWidget,
+)
+
 from . import APP_NAME, COMPANY_NAME, DEVELOPER_NAME, PROJECT_WEBSITE, __version__
 from .core import (
-    DEFAULT_PROFILE,
-    DEFAULT_PRONUNCIATION_FILE,
-    DEFAULT_MASTERING_PRESET,
-    DELIVERY_MODES,
-    EDGE_DEFAULT_VOICE,
-    EDGE_STYLES,
-    EDGE_VOICE_OPTIONS,
-    EMOTION_PRESETS,
-    MASTERING_PRESETS,
-    VOICE_PROFILES,
-    has_ffmpeg,
-    normalize_output_path,
-    synthesize,
+    DEFAULT_MASTERING_PRESET, DEFAULT_PROFILE, DEFAULT_PRONUNCIATION_FILE,
+    DELIVERY_MODES, EDGE_DEFAULT_VOICE, EDGE_STYLES, EDGE_VOICE_OPTIONS,
+    EMOTION_PRESETS, MASTERING_PRESETS, VOICE_PROFILES, has_ffmpeg,
+    normalize_output_path, synthesize,
 )
 from .settings import configure_logging, load_preferences, save_preferences
 
 
 LOGGER = logging.getLogger(__name__)
 
+APP_STYLESHEET = """
+QMainWindow, QWidget#central { background: #F4F7FB; color: #172B4D; }
+QLabel { color: #172B4D; }
+QFrame#header { background: #102A43; border-radius: 14px; }
+QFrame#card { background: #FFFFFF; border: 1px solid #DCE5F0; border-radius: 12px; }
+QLabel#appTitle { color: #FFFFFF; font: 700 22px "Segoe UI"; }
+QLabel#appSubtitle { color: #C9D8E8; font: 10pt "Segoe UI"; }
+QLabel#stepLabel { color: #2475D0; font: 700 9pt "Segoe UI"; }
+QLabel#sectionTitle { color: #102A43; font: 700 15px "Segoe UI"; }
+QLabel#muted { color: #6B7C93; font: 9pt "Segoe UI"; }
+QLabel#valueLabel { color: #2475D0; font: 700 9pt "Segoe UI"; min-width: 42px; }
+QLabel#statusPill { background: #E6F4EA; color: #137333; border-radius: 10px; padding: 5px 10px; font: 700 9pt "Segoe UI"; }
+QLineEdit, QComboBox, QTextEdit { background: #FFFFFF; color: #172B4D; border: 1px solid #C8D5E3; border-radius: 7px; padding: 7px 9px; font: 10pt "Segoe UI"; }
+QTextEdit { padding: 12px; }
+QLineEdit:focus, QComboBox:focus, QTextEdit:focus { border: 2px solid #3A86E9; }
+QComboBox::drop-down { border: 0; width: 28px; }
+QPushButton { background: #FFFFFF; color: #172B4D; border: 1px solid #C8D5E3; border-radius: 7px; padding: 8px 12px; font: 600 10pt "Segoe UI"; }
+QPushButton:hover { background: #EDF4FC; border-color: #82AEE0; }
+QPushButton:disabled { color: #97A6B5; background: #F2F5F8; border-color: #E1E8EF; }
+QPushButton#primaryButton { background: #2475D0; color: #FFFFFF; border: 1px solid #2475D0; padding: 10px 18px; font: 700 10pt "Segoe UI"; }
+QPushButton#primaryButton:hover { background: #145DAA; }
+QPushButton#linkButton { border: 0; color: #2475D0; padding: 4px; text-align: left; }
+QToolButton { background: #FFFFFF; color: #243B53; border: 1px solid #C8D5E3; border-radius: 6px; padding: 6px 9px; font: 600 9pt "Segoe UI"; }
+QToolButton:hover { background: #EDF4FC; border-color: #82AEE0; }
+QGroupBox { background: #FFFFFF; border: 1px solid #DCE5F0; border-radius: 8px; color: #243B53; font: 600 10pt "Segoe UI"; margin-top: 14px; padding: 10px; }
+QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; }
+QSlider::groove:horizontal { height: 6px; background: #DCE5F0; border-radius: 3px; }
+QSlider::sub-page:horizontal { background: #4A90E2; border-radius: 3px; }
+QSlider::handle:horizontal { background: #2475D0; width: 16px; margin: -5px 0; border-radius: 8px; }
+QProgressBar { border: 0; background: #E7EDF4; border-radius: 4px; max-height: 7px; }
+QProgressBar::chunk { background: #2475D0; border-radius: 4px; }
+QWidget#advancedPanel { background: #FFFFFF; }
+QScrollBar:vertical { background: #F0F4F8; width: 10px; margin: 2px; border-radius: 5px; }
+QScrollBar::handle:vertical { background: #AFC2D6; min-height: 28px; border-radius: 5px; }
+QScrollBar::handle:vertical:hover { background: #7E9FBE; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+"""
+
 
 def safe_read(path: str) -> str:
     try:
         return Path(path).read_text(encoding="utf-8")
-    except Exception as exc:
-        messagebox.showerror("Error", f"No se pudo leer el archivo:\n{exc}")
+    except OSError as exc:
+        LOGGER.warning("No se pudo leer el archivo %s: %s", path, exc)
+        QMessageBox.critical(None, "Error", f"No se pudo leer el archivo:\n{exc}")
         return ""
 
 
 def create_preview_path(final_quality: bool) -> Path:
-    """Devuelve un destino temporal unico para cada preescucha.
-
-    La ruta se crea fuera del proyecto y no se reserva como archivo: el motor
-    se encarga de crearla atomica y exclusivamente cuando el audio es valido.
-    """
+    """Devuelve una ruta única fuera del proyecto para cada preescucha."""
     quality = "final" if final_quality else "rapida"
-    return (
-        Path(tempfile.gettempdir())
-        / "studio_tts_latino"
-        / f"preescucha-{quality}-{uuid4().hex}.mp3"
-    )
+    return Path(tempfile.gettempdir()) / "alpha_studio_tts_latino" / f"preescucha-{quality}-{uuid4().hex}.mp3"
 
 
-class TTSApp:
-    def __init__(self, root: tk.Tk) -> None:
-        self.root = root
-        self.root.title(f"{APP_NAME} {__version__}")
-        self.root.geometry("980x680")
-        self.root.minsize(860, 600)
+def is_safe_support_url(url: str) -> bool:
+    """Acepta únicamente enlaces web completos para abrir desde la aplicación."""
+    parsed_url = urlparse(url)
+    return parsed_url.scheme in {"http", "https"} and bool(parsed_url.netloc)
 
-        self.output_var = tk.StringVar(value=str(Path.cwd() / "salida_gui.mp3"))
-        self.rate_var = tk.IntVar(value=176)
-        self.volume_var = tk.DoubleVar(value=100.0)
-        self.voice_hint_var = tk.StringVar(value=EDGE_DEFAULT_VOICE)
-        self.male_var = tk.BooleanVar(value=True)
-        self.provider_var = tk.StringVar(value="edge")
-        self.profile_var = tk.StringVar(value=DEFAULT_PROFILE)
-        self.style_var = tk.StringVar(value="narration-professional")
-        self.pause_var = tk.IntVar(value=250)
-        self.natural_mode_var = tk.BooleanVar(value=True)
-        self.delivery_mode_var = tk.StringVar(value="podcast")
-        self.emotion_var = tk.StringVar(value="neutro")
-        self.pronunciation_file_var = tk.StringVar(value=DEFAULT_PRONUNCIATION_FILE)
-        self.mastering_preset_var = tk.StringVar(value=DEFAULT_MASTERING_PRESET)
-        self.rate_display_var = tk.StringVar(value="176")
-        self.volume_display_var = tk.StringVar(value="100")
-        self.pause_display_var = tk.StringVar(value="250")
+
+class TTSApp(QMainWindow):
+    """Ventana principal; el motor TTS permanece separado de la interfaz."""
+
+    status_requested = Signal(str)
+    error_requested = Signal(str, str)
+    preview_ready = Signal(str)
+    task_finished = Signal(bool)
+
+    def __init__(self) -> None:
+        super().__init__()
         self._active_jobs = 0
         self._export_active = False
-
-        self._build_style()
+        self.setWindowTitle(f"{APP_NAME} {__version__}")
+        self.resize(1180, 780)
+        self.setMinimumSize(980, 680)
         self._build_layout()
+        self._connect_signals()
         self.apply_profile(DEFAULT_PROFILE)
         self._restore_preferences()
-        self.root.protocol("WM_DELETE_WINDOW", self._close_application)
 
-    def set_status(self, text: str) -> None:
-        self.status_var.set(text)
+    def _connect_signals(self) -> None:
+        self.status_requested.connect(self.set_status)
+        self.error_requested.connect(self._show_error)
+        self.preview_ready.connect(self._open_preview)
+        self.task_finished.connect(self._finish_task)
 
-    def _build_style(self) -> None:
-        style = ttk.Style(self.root)
-        if "clam" in style.theme_names():
-            style.theme_use("clam")
-        style.configure("Title.TLabel", font=("Segoe UI Semibold", 11))
-        style.configure("Primary.TButton", padding=(10, 6))
+    @staticmethod
+    def _card() -> tuple[QFrame, QVBoxLayout]:
+        card = QFrame()
+        card.setObjectName("card")
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(18, 18, 18, 18)
+        layout.setSpacing(12)
+        return card, layout
+
+    @staticmethod
+    def _heading(step: str, title: str, description: str) -> QVBoxLayout:
+        layout = QVBoxLayout()
+        layout.setSpacing(2)
+        for text, name in ((step, "stepLabel"), (title, "sectionTitle"), (description, "muted")):
+            label = QLabel(text)
+            label.setObjectName(name)
+            label.setWordWrap(name == "muted")
+            layout.addWidget(label)
+        return layout
+
+    @staticmethod
+    def _combo(values: list[str], current: str, editable: bool = False) -> QComboBox:
+        combo = QComboBox()
+        combo.addItems(values)
+        combo.setEditable(editable)
+        combo.setCurrentText(current)
+        return combo
 
     def _build_layout(self) -> None:
-        root_pad = ttk.Frame(self.root, padding=12)
-        root_pad.pack(fill="both", expand=True)
+        central = QWidget()
+        central.setObjectName("central")
+        self.setCentralWidget(central)
+        root = QVBoxLayout(central)
+        root.setContentsMargins(22, 20, 22, 18)
+        root.setSpacing(14)
+        root.addWidget(self._build_header())
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setChildrenCollapsible(False)
+        left_column = QWidget()
+        left_layout = QVBoxLayout(left_column)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(14)
+        left_layout.addWidget(self._build_text_card(), 3)
+        left_layout.addWidget(self._build_export_card(), 1)
+        splitter.addWidget(left_column)
+        splitter.addWidget(self._build_voice_card())
+        splitter.setSizes([590, 510])
+        root.addWidget(splitter, 1)
+        root.addLayout(self._build_footer())
 
-        top = ttk.Frame(root_pad)
-        top.pack(fill="both", expand=True)
-        top.columnconfigure(0, weight=2)
-        top.columnconfigure(1, weight=1)
-        top.rowconfigure(0, weight=1)
+    def _build_header(self) -> QFrame:
+        header = QFrame()
+        header.setObjectName("header")
+        layout = QHBoxLayout(header)
+        layout.setContentsMargins(22, 16, 22, 16)
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(1)
+        title = QLabel(APP_NAME)
+        title.setObjectName("appTitle")
+        subtitle = QLabel("Estudio de locución latina · Beta")
+        subtitle.setObjectName("appSubtitle")
+        text_layout.addWidget(title)
+        text_layout.addWidget(subtitle)
+        self.status_pill = QLabel("Listo para generar")
+        self.status_pill.setObjectName("statusPill")
+        layout.addLayout(text_layout)
+        layout.addStretch()
+        layout.addWidget(self.status_pill, alignment=Qt.AlignmentFlag.AlignTop)
+        return header
 
-        text_panel = ttk.LabelFrame(top, text="Paso 1: Texto")
-        text_panel.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
+    def _build_text_card(self) -> QFrame:
+        card, layout = self._card()
+        layout.addLayout(self._heading("PASO 1 · GUIÓN", "Escribe tu narración", "Pega el texto o carga un archivo UTF-8. La preescucha rápida usa los primeros 260 caracteres."))
+        self.text_widget = QTextEdit()
+        self.text_widget.setPlaceholderText("Pega o escribe aquí el guión que quieres convertir en voz…")
+        self.text_widget.setAcceptRichText(False)
+        self.text_widget.textChanged.connect(self._update_text_metrics)
+        layout.addWidget(self.text_widget, 1)
+        metrics = QHBoxLayout()
+        self.text_metrics = QLabel("0 palabras · 0 caracteres")
+        self.text_metrics.setObjectName("muted")
+        load_button = QPushButton("Cargar texto")
+        load_button.clicked.connect(self.load_file)
+        metrics.addWidget(self.text_metrics)
+        metrics.addStretch()
+        metrics.addWidget(load_button)
+        layout.addLayout(metrics)
+        return card
 
-        self.text_widget = tk.Text(text_panel, wrap="word", height=20, font=("Segoe UI", 11))
-        text_scroll = ttk.Scrollbar(text_panel, orient="vertical", command=self.text_widget.yview)
-        self.text_widget.configure(yscrollcommand=text_scroll.set)
-        self.text_widget.pack(side="left", fill="both", expand=True, padx=(8, 0), pady=8)
-        text_scroll.pack(side="right", fill="y", padx=(0, 8), pady=8)
+    def _build_voice_card(self) -> QScrollArea:
+        scroll = QScrollArea()
+        self.voice_scroll = scroll
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        card, layout = self._card()
+        layout.addLayout(self._heading("PASO 2 · VOZ", "Define la locución", "Escoge un perfil y ajusta solo lo necesario. Los controles avanzados permanecen disponibles abajo."))
+        basic = QGroupBox("Ajustes principales")
+        form = QFormLayout(basic)
+        form.setSpacing(10)
+        self.profile_combo = self._combo(sorted(VOICE_PROFILES), DEFAULT_PROFILE)
+        self.profile_combo.currentTextChanged.connect(self.apply_profile)
+        self.voice_combo = self._combo(EDGE_VOICE_OPTIONS, EDGE_DEFAULT_VOICE, editable=True)
+        self.rate_slider, self.rate_value = self._slider(130, 230, 176, " wpm")
+        self.emotion_combo = self._combo(sorted(EMOTION_PRESETS), "neutro")
+        form.addRow("Perfil", self.profile_combo)
+        form.addRow("Voz latina", self.voice_combo)
+        form.addRow("Velocidad", self._slider_row(self.rate_slider, self.rate_value))
+        form.addRow("Emoción", self.emotion_combo)
+        layout.addWidget(basic)
+        advanced = QGroupBox("Ajustes avanzados")
+        advanced_layout = QVBoxLayout(advanced)
+        advanced_layout.setContentsMargins(10, 8, 10, 10)
+        advanced_layout.addWidget(self._build_advanced_controls())
+        layout.addWidget(advanced)
+        layout.addStretch()
+        scroll.setWidget(card)
+        return scroll
 
-        right_panel = ttk.LabelFrame(top, text="Paso 2: Voz y Estilo")
-        right_panel.grid(row=0, column=1, sticky="nsew")
-        right_panel.columnconfigure(1, weight=1)
+    def _build_advanced_controls(self) -> QWidget:
+        widget = QWidget()
+        widget.setObjectName("advancedPanel")
+        form = QFormLayout(widget)
+        form.setContentsMargins(10, 14, 10, 10)
+        form.setSpacing(10)
+        self.provider_combo = self._combo(["edge", "local"], "edge")
+        self.style_combo = self._combo(EDGE_STYLES, "narration-professional")
+        self.delivery_combo = self._combo(sorted(DELIVERY_MODES), "podcast")
+        self.mastering_combo = self._combo(sorted(MASTERING_PRESETS), DEFAULT_MASTERING_PRESET)
+        self.pause_slider, self.pause_value = self._slider(0, 900, 250, " ms")
+        self.volume_slider, self.volume_value = self._slider(50, 100, 100, "%")
+        self.male_check = QCheckBox("Preferir voz masculina")
+        self.male_check.setChecked(True)
+        self.natural_mode_check = QCheckBox("Modo locutor natural (recomendado)")
+        self.natural_mode_check.setChecked(True)
+        form.addRow("Proveedor", self.provider_combo)
+        form.addRow("Estilo de locución", self.style_combo)
+        form.addRow("Modo de entrega", self.delivery_combo)
+        form.addRow("Mastering", self.mastering_combo)
+        form.addRow("Volumen", self._slider_row(self.volume_slider, self.volume_value))
+        form.addRow("Pausa entre líneas", self._slider_row(self.pause_slider, self.pause_value))
+        form.addRow("", self.male_check)
+        form.addRow("", self.natural_mode_check)
+        return widget
 
-        ttk.Label(right_panel, text="Perfil", style="Title.TLabel").grid(row=0, column=0, sticky="w", padx=8, pady=(10, 4))
-        self.profile_combo = ttk.Combobox(
-            right_panel,
-            textvariable=self.profile_var,
-            values=sorted(VOICE_PROFILES),
-            state="readonly",
+    def _slider(self, minimum: int, maximum: int, value: int, suffix: str) -> tuple[QSlider, QLabel]:
+        slider = QSlider(Qt.Orientation.Horizontal)
+        slider.setRange(minimum, maximum)
+        slider.setValue(value)
+        label = QLabel(f"{value}{suffix}")
+        label.setObjectName("valueLabel")
+        slider.valueChanged.connect(lambda current: label.setText(f"{current}{suffix}"))
+        return slider, label
+
+    @staticmethod
+    def _slider_row(slider: QSlider, label: QLabel) -> QWidget:
+        row = QWidget()
+        layout = QHBoxLayout(row)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(10)
+        layout.addWidget(slider, 1)
+        layout.addWidget(label)
+        return row
+
+    def _build_export_card(self) -> QFrame:
+        card, layout = self._card()
+        layout.setContentsMargins(18, 14, 18, 14)
+        layout.setSpacing(8)
+        layout.addLayout(self._heading("PASO 3 · EXPORTACIÓN", "Genera tu audio final", "Salida MP3 lista para guardar."))
+        output_row = QGridLayout()
+        output_row.setColumnStretch(1, 1)
+        output_row.addWidget(QLabel("Destino MP3"), 0, 0)
+        self.output_edit = QLineEdit(str(Path.cwd() / "salida_gui.mp3"))
+        output_row.addWidget(self.output_edit, 0, 1)
+        output_button = QPushButton("Cambiar…")
+        output_button.clicked.connect(self.choose_output)
+        output_row.addWidget(output_button, 0, 2)
+        layout.addLayout(output_row)
+        self.dictionary_toggle = QToolButton()
+        self.dictionary_toggle.setText("Diccionario de pronunciación opcional")
+        self.dictionary_toggle.setCheckable(True)
+        self.dictionary_toggle.setArrowType(Qt.ArrowType.RightArrow)
+        self.dictionary_toggle.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        layout.addWidget(self.dictionary_toggle)
+        self.dictionary_panel = QWidget()
+        dictionary_row = QGridLayout(self.dictionary_panel)
+        dictionary_row.setContentsMargins(0, 0, 0, 0)
+        dictionary_row.setColumnStretch(1, 1)
+        dictionary_row.addWidget(QLabel("Diccionario"), 0, 0)
+        self.pronunciation_edit = QLineEdit(DEFAULT_PRONUNCIATION_FILE)
+        dictionary_row.addWidget(self.pronunciation_edit, 0, 1)
+        dictionary_button = QPushButton("Elegir…")
+        dictionary_button.clicked.connect(self.choose_pronunciation_file)
+        dictionary_row.addWidget(dictionary_button, 0, 2)
+        layout.addWidget(self.dictionary_panel)
+        self.dictionary_panel.setVisible(False)
+        self.dictionary_toggle.toggled.connect(self._toggle_dictionary_panel)
+        actions = QHBoxLayout()
+        self.preview_quick_btn = QPushButton("Preescucha rápida")
+        self.preview_quick_btn.setToolTip("Genera los primeros 260 caracteres sin mastering.")
+        self.preview_quick_btn.clicked.connect(self.preview_quick_tts)
+        self.preview_final_btn = QPushButton("Preescucha final")
+        self.preview_final_btn.setToolTip("Genera una preescucha completa con mastering.")
+        self.preview_final_btn.clicked.connect(self.preview_final_tts)
+        self.convert_btn = QPushButton("Generar MP3")
+        self.convert_btn.setObjectName("primaryButton")
+        self.convert_btn.clicked.connect(self.run_tts)
+        actions.addWidget(self.preview_quick_btn)
+        actions.addWidget(self.preview_final_btn)
+        actions.addStretch()
+        actions.addWidget(self.convert_btn)
+        layout.addLayout(actions)
+        status_row = QHBoxLayout()
+        self.progress = QProgressBar()
+        self.progress.setTextVisible(False)
+        self.progress.setRange(0, 1)
+        self.status_label = QLabel("Listo para generar voz latina tipo locutor")
+        self.status_label.setObjectName("muted")
+        status_row.addWidget(self.progress, 1)
+        status_row.addWidget(self.status_label)
+        layout.addLayout(status_row)
+        return card
+
+    @Slot(bool)
+    def _toggle_dictionary_panel(self, visible: bool) -> None:
+        self.dictionary_panel.setVisible(visible)
+        self.dictionary_toggle.setArrowType(
+            Qt.ArrowType.DownArrow if visible else Qt.ArrowType.RightArrow
         )
-        self.profile_combo.grid(row=0, column=1, sticky="ew", padx=8, pady=(10, 4))
-        self.profile_combo.bind("<<ComboboxSelected>>", lambda _e: self.apply_profile(self.profile_var.get()))
 
-        ttk.Label(right_panel, text="Proveedor").grid(row=1, column=0, sticky="w", padx=8, pady=4)
-        self.provider_combo = ttk.Combobox(
-            right_panel,
-            textvariable=self.provider_var,
-            values=["edge", "local"],
-            state="readonly",
-        )
-        self.provider_combo.grid(row=1, column=1, sticky="ew", padx=8, pady=4)
+    def _build_footer(self) -> QHBoxLayout:
+        footer = QHBoxLayout()
+        credit = QLabel(f"{COMPANY_NAME} · Desarrollado por {DEVELOPER_NAME} · Proyecto gratuito")
+        credit.setObjectName("muted")
+        support = QPushButton("Apoyar el proyecto")
+        support.setObjectName("linkButton")
+        support.clicked.connect(self.open_support_page)
+        footer.addWidget(credit)
+        footer.addStretch()
+        footer.addWidget(support)
+        return footer
 
-        ttk.Label(right_panel, text="Voz latina").grid(row=2, column=0, sticky="w", padx=8, pady=4)
-        self.voice_combo = ttk.Combobox(
-            right_panel,
-            textvariable=self.voice_hint_var,
-            values=EDGE_VOICE_OPTIONS,
-            state="normal",
-        )
-        self.voice_combo.grid(row=2, column=1, sticky="ew", padx=8, pady=4)
+    @Slot(str)
+    def set_status(self, text: str) -> None:
+        self.status_label.setText(text)
+        self.status_pill.setText("Procesando…" if self._active_jobs else "Listo para generar")
 
-        ttk.Label(right_panel, text="Estilo de locucion").grid(row=3, column=0, sticky="w", padx=8, pady=4)
-        ttk.Combobox(
-            right_panel,
-            textvariable=self.style_var,
-            values=EDGE_STYLES,
-            state="readonly",
-        ).grid(row=3, column=1, sticky="ew", padx=8, pady=4)
-
-        ttk.Label(right_panel, text="Velocidad (wpm)").grid(row=4, column=0, sticky="w", padx=8, pady=4)
-        ttk.Scale(
-            right_panel,
-            from_=130,
-            to=230,
-            orient="horizontal",
-            variable=self.rate_var,
-            command=self._on_rate_change,
-        ).grid(
-            row=4, column=1, sticky="ew", padx=8, pady=4
-        )
-        ttk.Label(right_panel, textvariable=self.rate_display_var, width=4).grid(row=4, column=2, sticky="e", padx=(0, 8))
-
-        ttk.Label(right_panel, text="Volumen (0-100)").grid(row=5, column=0, sticky="w", padx=8, pady=4)
-        ttk.Scale(
-            right_panel,
-            from_=50,
-            to=100,
-            orient="horizontal",
-            variable=self.volume_var,
-            command=self._on_volume_change,
-        ).grid(
-            row=5, column=1, sticky="ew", padx=8, pady=4
-        )
-        ttk.Label(right_panel, textvariable=self.volume_display_var, width=4).grid(row=5, column=2, sticky="e", padx=(0, 8))
-
-        ttk.Label(right_panel, text="Pausa entre lineas (ms aprox.)").grid(row=6, column=0, sticky="w", padx=8, pady=4)
-        ttk.Scale(
-            right_panel,
-            from_=0,
-            to=900,
-            orient="horizontal",
-            variable=self.pause_var,
-            command=self._on_pause_change,
-        ).grid(
-            row=6, column=1, sticky="ew", padx=8, pady=4
-        )
-        ttk.Label(right_panel, textvariable=self.pause_display_var, width=4).grid(row=6, column=2, sticky="e", padx=(0, 8))
-
-        ttk.Checkbutton(right_panel, text="Preferir voz masculina", variable=self.male_var).grid(
-            row=7, column=1, sticky="w", padx=8, pady=(4, 10)
-        )
-
-        ttk.Checkbutton(
-            right_panel,
-            text="Modo locutor natural (recomendado)",
-            variable=self.natural_mode_var,
-        ).grid(row=8, column=1, sticky="w", padx=8, pady=(0, 12))
-
-        ttk.Label(right_panel, text="Modo de entrega").grid(row=9, column=0, sticky="w", padx=8, pady=4)
-        ttk.Combobox(
-            right_panel,
-            textvariable=self.delivery_mode_var,
-            values=sorted(DELIVERY_MODES),
-            state="readonly",
-        ).grid(row=9, column=1, sticky="ew", padx=8, pady=4)
-
-        ttk.Label(right_panel, text="Emocion").grid(row=10, column=0, sticky="w", padx=8, pady=4)
-        ttk.Combobox(
-            right_panel,
-            textvariable=self.emotion_var,
-            values=sorted(EMOTION_PRESETS),
-            state="readonly",
-        ).grid(row=10, column=1, sticky="ew", padx=8, pady=4)
-
-        ttk.Label(right_panel, text="Mastering").grid(row=11, column=0, sticky="w", padx=8, pady=4)
-        ttk.Combobox(
-            right_panel,
-            textvariable=self.mastering_preset_var,
-            values=sorted(MASTERING_PRESETS),
-            state="readonly",
-        ).grid(row=11, column=1, sticky="ew", padx=8, pady=4)
-
-        bottom = ttk.LabelFrame(root_pad, text="Paso 3: Exportacion")
-        bottom.pack(fill="x", pady=(10, 0))
-        bottom.columnconfigure(1, weight=1)
-
-        ttk.Button(bottom, text="Abrir archivo", command=self.load_file).grid(row=0, column=0, padx=8, pady=8, sticky="w")
-        ttk.Button(bottom, text="Guardar como", command=self.choose_output).grid(row=0, column=1, padx=8, pady=8, sticky="w")
-
-        ttk.Label(bottom, text="Salida MP3").grid(row=1, column=0, sticky="w", padx=8, pady=4)
-        ttk.Entry(bottom, textvariable=self.output_var).grid(row=1, column=1, sticky="ew", padx=8, pady=4)
-
-        ttk.Label(bottom, text="Diccionario pronunciacion").grid(row=2, column=0, sticky="w", padx=8, pady=4)
-        pronunciation_row = ttk.Frame(bottom)
-        pronunciation_row.grid(row=2, column=1, sticky="ew", padx=8, pady=4)
-        pronunciation_row.columnconfigure(0, weight=1)
-        ttk.Entry(pronunciation_row, textvariable=self.pronunciation_file_var).grid(row=0, column=0, sticky="ew")
-        ttk.Button(pronunciation_row, text="Elegir", command=self.choose_pronunciation_file).grid(row=0, column=1, padx=(6, 0))
-
-        action_row = ttk.Frame(bottom)
-        action_row.grid(row=3, column=0, columnspan=2, sticky="ew", padx=8, pady=8)
-        action_row.columnconfigure(4, weight=1)
-
-        self.preview_quick_btn = ttk.Button(
-            action_row,
-            text="Preescucha rapida",
-            style="Primary.TButton",
-            command=self.preview_quick_tts,
-        )
-        self.preview_quick_btn.grid(row=0, column=0, padx=(0, 6))
-        self.preview_final_btn = ttk.Button(
-            action_row,
-            text="Preescucha final",
-            style="Primary.TButton",
-            command=self.preview_final_tts,
-        )
-        self.preview_final_btn.grid(row=0, column=1, padx=(0, 6))
-        self.convert_btn = ttk.Button(action_row, text="Exportar MP3", style="Primary.TButton", command=self.run_tts)
-        self.convert_btn.grid(row=0, column=2, padx=(0, 8))
-
-        self.progress = ttk.Progressbar(action_row, mode="indeterminate", length=220)
-        self.progress.grid(row=0, column=3, padx=(0, 10))
-
-        self.status_var = tk.StringVar(value="Listo para generar voz latina tipo locutor")
-        ttk.Label(action_row, textvariable=self.status_var).grid(row=0, column=4, sticky="w")
-
-        footer = ttk.Frame(root_pad)
-        footer.pack(fill="x", pady=(8, 0))
-        ttk.Label(
-            footer,
-            text=f"{COMPANY_NAME} · Desarrollado por {DEVELOPER_NAME} · Proyecto gratuito",
-        ).pack(side="left")
-        ttk.Button(
-            footer,
-            text="Apoyar el proyecto",
-            command=self.open_support_page,
-        ).pack(side="right")
+    def _update_text_metrics(self) -> None:
+        text = self.text_widget.toPlainText().strip()
+        words = len(text.split()) if text else 0
+        self.text_metrics.setText(f"{words:,} palabras · {len(text):,} caracteres")
 
     def _restore_preferences(self) -> None:
         preferences = load_preferences()
         profile = preferences.get("profile")
         if isinstance(profile, str) and profile in VOICE_PROFILES:
-            self.profile_var.set(profile)
+            self.profile_combo.setCurrentText(profile)
             self.apply_profile(profile)
-
-        variables = {
-            "output": self.output_var,
-            "rate": self.rate_var,
-            "volume": self.volume_var,
-            "voice_hint": self.voice_hint_var,
-            "prefer_male": self.male_var,
-            "provider": self.provider_var,
-            "style": self.style_var,
-            "pause_ms": self.pause_var,
-            "natural_mode": self.natural_mode_var,
-            "delivery_mode": self.delivery_mode_var,
-            "emotion": self.emotion_var,
-            "pronunciation_file": self.pronunciation_file_var,
-            "mastering_preset": self.mastering_preset_var,
-        }
-        for name, variable in variables.items():
-            if name not in preferences:
-                continue
-            try:
-                variable.set(preferences[name])
-            except (tk.TclError, TypeError, ValueError):
-                LOGGER.warning("Se ignoro una preferencia invalida: %s", name)
-        self._refresh_slider_labels()
+        for name, combo in {"voice_hint": self.voice_combo, "provider": self.provider_combo, "style": self.style_combo, "delivery_mode": self.delivery_combo, "emotion": self.emotion_combo, "mastering_preset": self.mastering_combo}.items():
+            value = preferences.get(name)
+            if isinstance(value, str) and value:
+                combo.setCurrentText(value)
+        self.output_edit.setText(str(preferences.get("output", self.output_edit.text())))
+        self.pronunciation_edit.setText(str(preferences.get("pronunciation_file", self.pronunciation_edit.text())))
+        for name, widget in (("rate", self.rate_slider), ("volume", self.volume_slider), ("pause_ms", self.pause_slider)):
+            value = preferences.get(name)
+            if isinstance(value, (int, float)):
+                widget.setValue(int(value))
+        for name, widget in (("prefer_male", self.male_check), ("natural_mode", self.natural_mode_check)):
+            value = preferences.get(name)
+            if isinstance(value, bool):
+                widget.setChecked(value)
 
     def _save_preferences(self) -> None:
         preferences = {
-            "output": self.output_var.get(),
-            "profile": self.profile_var.get(),
-            "rate": int(self.rate_var.get()),
-            "volume": float(self.volume_var.get()),
-            "voice_hint": self.voice_hint_var.get(),
-            "prefer_male": bool(self.male_var.get()),
-            "provider": self.provider_var.get(),
-            "style": self.style_var.get(),
-            "pause_ms": int(self.pause_var.get()),
-            "natural_mode": bool(self.natural_mode_var.get()),
-            "delivery_mode": self.delivery_mode_var.get(),
-            "emotion": self.emotion_var.get(),
-            "pronunciation_file": self.pronunciation_file_var.get(),
-            "mastering_preset": self.mastering_preset_var.get(),
+            "output": self.output_edit.text(), "profile": self.profile_combo.currentText(),
+            "rate": self.rate_slider.value(), "volume": self.volume_slider.value(),
+            "voice_hint": self.voice_combo.currentText(), "prefer_male": self.male_check.isChecked(),
+            "provider": self.provider_combo.currentText(), "style": self.style_combo.currentText(),
+            "pause_ms": self.pause_slider.value(), "natural_mode": self.natural_mode_check.isChecked(),
+            "delivery_mode": self.delivery_combo.currentText(), "emotion": self.emotion_combo.currentText(),
+            "pronunciation_file": self.pronunciation_edit.text(), "mastering_preset": self.mastering_combo.currentText(),
         }
         try:
             save_preferences(preferences)
         except OSError as exc:
             LOGGER.warning("No se pudieron guardar las preferencias: %s", exc)
 
-    def _close_application(self) -> None:
+    def closeEvent(self, event) -> None:  # type: ignore[override]
         self._save_preferences()
-        self.root.destroy()
+        event.accept()
+
+    def showEvent(self, event) -> None:  # type: ignore[override]
+        super().showEvent(event)
+        self.voice_scroll.verticalScrollBar().setValue(0)
 
     def open_support_page(self) -> None:
         support_url = os.getenv("STUDIO_TTS_DONATION_URL", PROJECT_WEBSITE)
-        parsed_url = urlparse(support_url)
-        if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
+        if not is_safe_support_url(support_url):
             LOGGER.warning("Se rechazo un enlace de apoyo invalido")
-            messagebox.showwarning(
-                "Enlace no valido",
-                "El enlace de apoyo debe ser una direccion web HTTP o HTTPS.",
-            )
+            QMessageBox.warning(self, "Enlace no válido", "El enlace de apoyo debe ser una dirección web HTTP o HTTPS.")
             return
         webbrowser.open(support_url)
 
     def load_file(self) -> None:
-        path = filedialog.askopenfilename(filetypes=[("Texto", "*.txt"), ("Todos", "*.*")])
-        if not path:
-            return
-        content = safe_read(path)
-        if content:
-            self.text_widget.delete("1.0", tk.END)
-            self.text_widget.insert(tk.END, content)
+        path, _ = QFileDialog.getOpenFileName(self, "Abrir guión", "", "Texto (*.txt);;Todos (*.*)")
+        if path:
+            content = safe_read(path)
+            if content:
+                self.text_widget.setPlainText(content)
+                self.set_status(f"Guión cargado: {Path(path).name}")
 
     def choose_output(self) -> None:
-        path = filedialog.asksaveasfilename(
-            defaultextension=".mp3",
-            filetypes=[("Audio MP3", "*.mp3"), ("Todos", "*.*")],
-        )
+        path, _ = QFileDialog.getSaveFileName(self, "Guardar MP3", self.output_edit.text(), "Audio MP3 (*.mp3)")
         if path:
-            self.output_var.set(str(Path(path).with_suffix(".mp3")))
+            self.output_edit.setText(str(Path(path).with_suffix(".mp3")))
 
     def choose_pronunciation_file(self) -> None:
-        path = filedialog.askopenfilename(filetypes=[("JSON", "*.json"), ("Todos", "*.*")])
+        path, _ = QFileDialog.getOpenFileName(self, "Elegir diccionario", "", "JSON (*.json);;Todos (*.*)")
         if path:
-            self.pronunciation_file_var.set(path)
+            self.pronunciation_edit.setText(path)
 
+    @Slot(str)
     def apply_profile(self, name: str) -> None:
         profile = VOICE_PROFILES.get(name)
         if not profile:
             return
-        self.rate_var.set(int(profile.get("rate", self.rate_var.get())))
-        self.volume_var.set(float(profile.get("volume", 1.0)) * 100.0)
-        self.voice_hint_var.set(str(profile.get("voice_hint", EDGE_DEFAULT_VOICE)))
-        self.male_var.set(bool(profile.get("prefer_male", self.male_var.get())))
-        self.style_var.set(str(profile.get("style", self.style_var.get())))
-        self.pause_var.set(int(profile.get("pause_ms", self.pause_var.get())))
-        self._refresh_slider_labels()
-        self.set_status(f"Perfil aplicado: {name}")
-
-    def _on_rate_change(self, value: str) -> None:
-        self.rate_display_var.set(str(int(float(value))))
-
-    def _on_volume_change(self, value: str) -> None:
-        self.volume_display_var.set(str(int(float(value))))
-
-    def _on_pause_change(self, value: str) -> None:
-        self.pause_display_var.set(str(int(float(value))))
-
-    def _refresh_slider_labels(self) -> None:
-        self.rate_display_var.set(str(int(self.rate_var.get())))
-        self.volume_display_var.set(str(int(float(self.volume_var.get()))))
-        self.pause_display_var.set(str(int(self.pause_var.get())))
+        self.rate_slider.setValue(int(profile.get("rate", self.rate_slider.value())))
+        self.volume_slider.setValue(int(float(profile.get("volume", 1.0)) * 100))
+        self.voice_combo.setCurrentText(str(profile.get("voice_hint", EDGE_DEFAULT_VOICE)))
+        self.male_check.setChecked(bool(profile.get("prefer_male", self.male_check.isChecked())))
+        self.style_combo.setCurrentText(str(profile.get("style", self.style_combo.currentText())))
+        self.pause_slider.setValue(int(profile.get("pause_ms", self.pause_slider.value())))
+        if hasattr(self, "status_label"):
+            self.set_status(f"Perfil aplicado: {name}")
 
     def _collect_request(self) -> tuple[str, Path, dict]:
-        text = self.text_widget.get("1.0", tk.END).strip()
+        text = self.text_widget.toPlainText().strip()
         if not text:
-            raise ValueError("Escriba o cargue texto para convertir.")
-
-        output_path = Path(self.output_var.get()).expanduser()
-        output_path, audio_format = normalize_output_path(
-            self.provider_var.get(),
-            output_path,
-            "mp3",
-        )
-        self.output_var.set(str(output_path))
-
+            raise ValueError("Escribe o carga texto para convertir.")
+        output_path, audio_format = normalize_output_path(self.provider_combo.currentText(), Path(self.output_edit.text()).expanduser(), "mp3")
+        self.output_edit.setText(str(output_path))
         params = {
-            "rate": int(self.rate_var.get()),
-            "volume": max(0.0, min(1.0, float(self.volume_var.get()) / 100.0)),
-            "voice_hint": self.voice_hint_var.get().strip() or None,
-            "prefer_male": bool(self.male_var.get()),
-            "provider": self.provider_var.get(),
-            "audio_format": audio_format,
-            "style": self.style_var.get().strip() or None,
-            "pause_ms": int(self.pause_var.get()),
-            "profile": self.profile_var.get(),
-            "natural_mode": bool(self.natural_mode_var.get()),
-            "delivery_mode": self.delivery_mode_var.get(),
-            "emotion": self.emotion_var.get(),
-            "pronunciation_file": self.pronunciation_file_var.get().strip() or None,
-            "mastering_preset": self.mastering_preset_var.get(),
+            "rate": self.rate_slider.value(), "volume": self.volume_slider.value() / 100.0,
+            "voice_hint": self.voice_combo.currentText().strip() or None,
+            "prefer_male": self.male_check.isChecked(), "provider": self.provider_combo.currentText(),
+            "audio_format": audio_format, "style": self.style_combo.currentText() or None,
+            "pause_ms": self.pause_slider.value(), "profile": self.profile_combo.currentText(),
+            "natural_mode": self.natural_mode_check.isChecked(), "delivery_mode": self.delivery_combo.currentText(),
+            "emotion": self.emotion_combo.currentText(), "pronunciation_file": self.pronunciation_edit.text().strip() or None,
+            "mastering_preset": self.mastering_combo.currentText(),
         }
         return text, output_path, params
 
     def _set_busy(self, busy: bool, *, exclusive: bool = False) -> None:
-        """Actualiza el estado de tareas sin bloquear otras preescuchas.
-
-        La exportacion es exclusiva para proteger el archivo elegido por la
-        persona usuaria. Las preescuchas usan rutas unicas y pueden ejecutarse
-        en paralelo; el contador evita reactivar la interfaz antes de tiempo.
-        """
-        was_busy = self._active_jobs > 0
         if busy:
             self._active_jobs += 1
-            if exclusive:
-                self._export_active = True
+            self._export_active = self._export_active or exclusive
         else:
             self._active_jobs = max(0, self._active_jobs - 1)
             if exclusive:
                 self._export_active = False
+        self.convert_btn.setEnabled(not self._export_active)
+        self.preview_quick_btn.setEnabled(not self._export_active)
+        self.preview_final_btn.setEnabled(not self._export_active)
+        self.progress.setRange(0, 0) if self._active_jobs else self.progress.setRange(0, 1)
+        self.status_pill.setText("Procesando…" if self._active_jobs else "Listo para generar")
 
-        is_busy = self._active_jobs > 0
-        if self._export_active:
-            self.convert_btn.state(["disabled"])
-            self.preview_quick_btn.state(["disabled"])
-            self.preview_final_btn.state(["disabled"])
-        else:
-            self.convert_btn.state(["!disabled"])
-            self.preview_quick_btn.state(["!disabled"])
-            self.preview_final_btn.state(["!disabled"])
-
-        if is_busy and not was_busy:
-            self.progress.start(10)
-        elif was_busy and not is_busy:
-            self.progress.stop()
+    @Slot(bool)
+    def _finish_task(self, exclusive: bool) -> None:
+        self._set_busy(False, exclusive=exclusive)
 
     def preview_quick_tts(self) -> None:
         self._preview_tts(final_quality=False)
@@ -478,80 +499,78 @@ class TTSApp:
         try:
             text, _, params = self._collect_request()
         except Exception as exc:
-            messagebox.showwarning("Sin texto", str(exc))
+            QMessageBox.warning(self, "Sin texto", str(exc))
             return
-
         if not final_quality:
             text = " ".join(text.split())[:260]
             if not text:
-                messagebox.showwarning("Sin texto", "No hay texto suficiente para preescucha.")
+                QMessageBox.warning(self, "Sin texto", "No hay texto suficiente para preescucha.")
                 return
-
         preview_path = create_preview_path(final_quality)
         self._set_busy(True)
-        self.set_status(
-            "Generando preescucha final..." if final_quality else "Generando preescucha rapida..."
-        )
+        self.set_status("Generando preescucha final…" if final_quality else "Generando preescucha rápida…")
 
         def worker() -> None:
             try:
                 synthesize(text, preview_path, enable_mastering=final_quality, **params)
-                self.root.after(0, lambda: self.set_status(f"Preescucha lista: {preview_path.name}"))
-                try:
-                    os.startfile(str(preview_path))
-                except Exception:
-                    pass
+                self.status_requested.emit(f"Preescucha lista: {preview_path.name}")
+                self.preview_ready.emit(str(preview_path))
             except Exception as exc:
-                error_message = f"No se pudo generar la preescucha:\n{exc}"
                 LOGGER.exception("Error durante la preescucha")
-                self.root.after(0, lambda message=error_message: messagebox.showerror("Error", message))
-                self.root.after(0, lambda: self.set_status("Error en preescucha"))
+                self.error_requested.emit("Error en preescucha", str(exc))
+                self.status_requested.emit("Error en preescucha")
             finally:
-                self.root.after(0, lambda: self._set_busy(False))
-
+                self.task_finished.emit(False)
         threading.Thread(target=worker, daemon=True).start()
 
     def run_tts(self) -> None:
         try:
             text, output_path, params = self._collect_request()
         except Exception as exc:
-            messagebox.showwarning("Sin texto", str(exc))
+            QMessageBox.warning(self, "Sin texto", str(exc))
             return
-
         if params["provider"] == "local" and not has_ffmpeg():
-            messagebox.showwarning(
-                "FFmpeg requerido",
-                "Para usar el proveedor local con salida MP3, instala FFmpeg o cambia a proveedor edge.",
-            )
+            QMessageBox.warning(self, "FFmpeg requerido", "Para usar el proveedor local con salida MP3, instala FFmpeg o cambia a proveedor Edge.")
             return
-
         self._set_busy(True, exclusive=True)
-        self.set_status("Generando audio profesional...")
+        self.set_status("Generando audio profesional…")
 
         def worker() -> None:
             try:
                 synthesize(text, output_path, enable_mastering=True, **params)
-                status_msg = f"Exportado MP3: {output_path.name}"
+                message = f"Exportado MP3: {output_path.name}"
                 if not has_ffmpeg():
-                    status_msg += " (sin mastering: FFmpeg no instalado)"
-                self.root.after(0, lambda: self.set_status(status_msg))
+                    message += " (sin mastering: FFmpeg no instalado)"
+                self.status_requested.emit(message)
             except Exception as exc:
-                error_message = f"No se pudo generar el audio:\n{exc}"
-                LOGGER.exception("Error durante la exportacion")
-                self.root.after(0, lambda message=error_message: messagebox.showerror("Error", message))
-                self.root.after(0, lambda: self.set_status("Error"))
+                LOGGER.exception("Error durante la exportación")
+                self.error_requested.emit("Error al exportar", str(exc))
+                self.status_requested.emit("Error al exportar")
             finally:
-                self.root.after(0, lambda: self._set_busy(False, exclusive=True))
-
+                self.task_finished.emit(True)
         threading.Thread(target=worker, daemon=True).start()
 
+    @Slot(str, str)
+    def _show_error(self, title: str, message: str) -> None:
+        QMessageBox.critical(self, title, f"No se pudo completar la operación:\n{message}")
 
-def main() -> None:
+    @Slot(str)
+    def _open_preview(self, path: str) -> None:
+        QDesktopServices.openUrl(QUrl.fromLocalFile(path))
+
+
+def main() -> int:
     configure_logging()
-    root = tk.Tk()
-    TTSApp(root)
-    root.mainloop()
+    app = QApplication.instance() or QApplication(sys.argv)
+    app.setStyle("Fusion")
+    app.setStyleSheet(APP_STYLESHEET)
+    window = TTSApp()
+    window.show()
+    screen = window.screen() or app.primaryScreen()
+    if screen:
+        window.move(screen.availableGeometry().center() - window.frameGeometry().center())
+    return app.exec()
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

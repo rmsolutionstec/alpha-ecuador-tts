@@ -10,7 +10,8 @@ from typing import Any, Optional
 
 
 LOGGER = logging.getLogger(__name__)
-APPLICATION_DIRECTORY = "StudioTTSLatino"
+APPLICATION_DIRECTORY = "AlphaStudioTTSLatino"
+LEGACY_APPLICATION_DIRECTORY = "StudioTTSLatino"
 
 
 def get_app_data_directory() -> Path:
@@ -25,8 +26,19 @@ def get_preferences_path() -> Path:
     return get_app_data_directory() / "preferences.json"
 
 
+def get_legacy_preferences_path() -> Path:
+    local_appdata = os.getenv("LOCALAPPDATA")
+    if local_appdata:
+        return Path(local_appdata) / LEGACY_APPLICATION_DIRECTORY / "preferences.json"
+    return Path.home() / ".config" / LEGACY_APPLICATION_DIRECTORY / "preferences.json"
+
+
 def load_preferences(path: Optional[Path] = None) -> dict[str, Any]:
     preferences_path = path or get_preferences_path()
+    if path is None and not preferences_path.is_file():
+        legacy_path = get_legacy_preferences_path()
+        if legacy_path.is_file():
+            preferences_path = legacy_path
     if not preferences_path.is_file():
         return {}
 
@@ -56,7 +68,7 @@ def save_preferences(
 
 def configure_logging() -> Optional[Path]:
     """Activa registros tecnicos sin guardar los textos de los usuarios."""
-    log_path = get_app_data_directory() / "logs" / "studio-tts-latino.log"
+    log_path = get_app_data_directory() / "logs" / "alpha-studio-tts-latino.log"
     try:
         log_path.parent.mkdir(parents=True, exist_ok=True)
         logging.basicConfig(

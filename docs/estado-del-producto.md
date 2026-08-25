@@ -1,4 +1,4 @@
-# Estado del Producto - Studio TTS Latino
+# Estado del Producto - Alpha Studio TTS Latino
 
 Fecha de corte: 2026-08-25
 
@@ -10,7 +10,8 @@ Construir una aplicacion de texto a voz en espanol latino con calidad de locutor
 
 - Estado general: Beta publica preparada para evolucionar como proyecto comunitario.
 - Motor TTS: Funcional y usable en produccion basica.
-- Interfaz GUI: Funcional, con controles de voz, perfil, emocion y preescucha.
+- Interfaz GUI: Moderna en PySide6, con guion y exportación a la izquierda, y controles
+  completos de voz en la columna derecha.
 - Calidad de audio: Buena, con mastering opcional via FFmpeg.
 - Documentacion: Centralizada en `docs/`, con arquitectura, privacidad y estrategia de despliegue.
 

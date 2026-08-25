@@ -18,7 +18,7 @@ try {
         --noconfirm `
         --clean `
         --windowed `
-        --name "StudioTTSLatino" `
+        --name "AlphaStudioTTSLatino" `
         --add-data "$dictionaryPath;studio_tts_latino/data" `
         "gui.py"
 
@@ -26,7 +26,7 @@ try {
         throw "No se pudo crear el ejecutable. Instala PyInstaller con pip install '.[build]'."
     }
 
-    Write-Host "Ejecutable generado en dist\StudioTTSLatino"
+    Write-Host "Ejecutable generado en dist\AlphaStudioTTSLatino"
 } finally {
     Pop-Location
 }

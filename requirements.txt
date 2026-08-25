@@ -1,2 +1,3 @@
 edge-tts>=7.2.3,<8
+PySide6>=6.8,<7
 pyttsx3>=2.99,<3

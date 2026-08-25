@@ -1,6 +1,7 @@
 import json
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from studio_tts_latino.settings import load_preferences, save_preferences
 
@@ -36,6 +37,20 @@ class TestLocalSettings(unittest.TestCase):
         self.addCleanup(preferences_path.unlink, missing_ok=True)
         preferences_path.write_text(json.dumps(["documental"]), encoding="utf-8")
         self.assertEqual(load_preferences(preferences_path), {})
+
+    def test_legacy_preferences_are_loaded_when_the_new_path_is_missing(self):
+        new_preferences_path = FIXTURES_DIRECTORY / "new-preferences.json"
+        legacy_preferences_path = FIXTURES_DIRECTORY / "legacy-preferences.json"
+        self.addCleanup(new_preferences_path.unlink, missing_ok=True)
+        self.addCleanup(legacy_preferences_path.unlink, missing_ok=True)
+        legacy_preferences_path.write_text('{"profile": "documental"}', encoding="utf-8")
+
+        with patch("studio_tts_latino.settings.get_preferences_path", return_value=new_preferences_path):
+            with patch(
+                "studio_tts_latino.settings.get_legacy_preferences_path",
+                return_value=legacy_preferences_path,
+            ):
+                self.assertEqual(load_preferences(), {"profile": "documental"})
 
 
 if __name__ == "__main__":

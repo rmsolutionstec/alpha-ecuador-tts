@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "studio-tts-latino"
+name = "alpha-studio-tts-latino"
 version = "0.2.0"
 description = "Aplicacion gratuita de texto a voz con perfiles de locucion en espanol latino"
 readme = "README.md"
@@ -28,6 +28,7 @@ classifiers = [
 ]
 dependencies = [
     "edge-tts>=7.2.3,<8",
+    "PySide6>=6.8,<7",
     "pyttsx3>=2.99,<3",
 ]
 
@@ -40,6 +41,8 @@ Documentation = "https://alphaecuador.com"
 Company = "https://alphaecuador.com"
 
 [project.scripts]
+alpha-studio-tts = "studio_tts_latino.cli:main"
+alpha-studio-tts-gui = "studio_tts_latino.gui:main"
 studio-tts = "studio_tts_latino.cli:main"
 studio-tts-gui = "studio_tts_latino.gui:main"
 

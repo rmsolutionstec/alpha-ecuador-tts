@@ -1,6 +1,6 @@
-"""Studio TTS Latino: herramientas gratuitas de locucion en espanol."""
+"""Alpha Studio TTS Latino: herramientas gratuitas de locucion en espanol."""
 
-APP_NAME = "Studio TTS Latino"
+APP_NAME = "Alpha Studio TTS Latino"
 PROJECT_WEBSITE = "https://alphaecuador.com"
 COMPANY_NAME = "Alpha Ecuador"
 DEVELOPER_NAME = "René Mejillón"

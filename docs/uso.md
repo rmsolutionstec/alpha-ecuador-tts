@@ -1,4 +1,4 @@
-# Uso de Studio TTS Latino
+# Uso de Alpha Studio TTS Latino
 
 ## Aplicacion de escritorio
 

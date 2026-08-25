@@ -1,6 +1,6 @@
 # Créditos y atribución
 
-## Studio TTS Latino
+## Alpha Studio TTS Latino
 
 - **Empresa responsable:** Alpha Ecuador.
 - **Desarrollador:** René Mejillón.

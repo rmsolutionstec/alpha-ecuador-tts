@@ -1,4 +1,4 @@
-"""Interfaz de comandos de Studio TTS Latino."""
+"""Interfaz de comandos de Alpha Studio TTS Latino."""
 
 from __future__ import annotations
 

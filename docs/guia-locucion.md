@@ -1,4 +1,4 @@
-# Guia de Locucion Profesional (Studio TTS Latino)
+# Guia de Locucion Profesional (Alpha Studio TTS Latino)
 
 Esta guia resume como sonar mas humano y menos sintetico.
 

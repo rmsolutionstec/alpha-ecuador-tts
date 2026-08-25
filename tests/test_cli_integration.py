@@ -60,7 +60,7 @@ class TestCLIIntegration(unittest.TestCase):
             text=True,
         )
         self.assertEqual(result.returncode, 0)
-        self.assertIn("Studio TTS Latino 0.2.0", result.stdout)
+        self.assertIn("Alpha Studio TTS Latino 0.2.0", result.stdout)
 
 
 if __name__ == "__main__":

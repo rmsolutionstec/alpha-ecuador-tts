@@ -18,7 +18,7 @@ Gracias por caminar con nosotros en este recorrido.
 ## Texto 3 - Comercial
 
 Tu proyecto merece una voz que conecte desde el primer segundo.
-Con Studio TTS Latino, conviertes ideas en mensajes claros y profesionales.
+Con Alpha Studio TTS Latino, conviertes ideas en mensajes claros y profesionales.
 Exporta en MP3 y publica con seguridad.
 
 ## Texto 4 - Tecnico con siglas

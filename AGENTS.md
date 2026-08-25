@@ -27,9 +27,18 @@ desarrollador.
 
 3. Después de cambios visuales, revisa la GUI renderizada y comprueba textos, espacios,
    scroll y controles sin recortes.
-4. Para un entregable Windows, ejecuta `.scriptsuild_windows.ps1` y verifica
+4. Para un entregable Windows, ejecuta `scripts\build_windows.ps1` y verifica
    `dist\AlphaStudioTTSLatino\AlphaStudioTTSLatino.exe`.
 5. No almacenes guiones de usuario en preferencias, registros ni el repositorio.
+
+## Cierre y repositorio
+
+- Al terminar cada sesión de trabajo, ejecuta `git status --short`, revisa los cambios
+  pendientes y confirma que no haya archivos ajenos o secretos.
+- Si el usuario solicita cerrar con Git, ejecuta las pruebas pertinentes, crea un commit
+  descriptivo y sube los cambios a `origin/main`; después confirma el hash y el estado
+  limpio del árbol de trabajo.
+- Mantén `origin` apuntando al repositorio oficial de GitHub de Alpha Ecuador.
 
 ## Documentación y mantenimiento
 

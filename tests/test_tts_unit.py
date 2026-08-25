@@ -1,6 +1,7 @@
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from uuid import uuid4
 
 import tts
 from studio_tts_latino import core
@@ -44,7 +45,7 @@ class TestTTSUnit(unittest.TestCase):
         self.assertEqual(tts.load_pronunciation_map(str(pronunciation_path))["OpenAI"], "open ei ai")
 
     def test_invalid_pronunciation_dictionary_is_ignored(self):
-        dictionary_path = FIXTURES_DIRECTORY / "invalid-pronunciation.json"
+        dictionary_path = FIXTURES_DIRECTORY / f"test-{uuid4().hex}-invalid-pronunciation.json"
         self.addCleanup(dictionary_path.unlink, missing_ok=True)
         dictionary_path.write_text("[1, 2, 3]", encoding="utf-8")
         self.assertEqual(tts.load_pronunciation_map(str(dictionary_path)), {})
@@ -147,6 +148,27 @@ class TestTTSUnit(unittest.TestCase):
         self.assertFalse(prefer_male)
         self.assertEqual(style, "newscast-casual")
         self.assertEqual(pause_ms, 40)
+
+    def test_engine_rejects_invalid_values_before_starting_synthesis(self):
+        invalid_options = (
+            ({"rate": 120}, "velocidad"),
+            ({"volume": 1.1}, "volumen"),
+            ({"pause_ms": 901}, "pausa"),
+            ({"delivery_mode": "improvisado"}, "Modo de entrega"),
+            ({"mastering_preset": "desconocido"}, "Preset de mastering"),
+        )
+        for overrides, error_text in invalid_options:
+            with self.subTest(overrides=overrides):
+                options = {
+                    "rate": 180,
+                    "volume": 1.0,
+                    "voice_hint": None,
+                    "provider": "edge",
+                    "enable_mastering": False,
+                }
+                options.update(overrides)
+                with self.assertRaisesRegex(ValueError, error_text):
+                    core.synthesize("Hola", Path("salida.mp3"), **options)
 
 
 if __name__ == "__main__":

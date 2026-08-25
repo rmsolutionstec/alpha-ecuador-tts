@@ -10,6 +10,7 @@ import webbrowser
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from urllib.parse import urlparse
+from uuid import uuid4
 
 from . import APP_NAME, COMPANY_NAME, DEVELOPER_NAME, PROJECT_WEBSITE, __version__
 from .core import (
@@ -41,6 +42,20 @@ def safe_read(path: str) -> str:
         return ""
 
 
+def create_preview_path(final_quality: bool) -> Path:
+    """Devuelve un destino temporal unico para cada preescucha.
+
+    La ruta se crea fuera del proyecto y no se reserva como archivo: el motor
+    se encarga de crearla atomica y exclusivamente cuando el audio es valido.
+    """
+    quality = "final" if final_quality else "rapida"
+    return (
+        Path(tempfile.gettempdir())
+        / "studio_tts_latino"
+        / f"preescucha-{quality}-{uuid4().hex}.mp3"
+    )
+
+
 class TTSApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
@@ -65,6 +80,8 @@ class TTSApp:
         self.rate_display_var = tk.StringVar(value="176")
         self.volume_display_var = tk.StringVar(value="100")
         self.pause_display_var = tk.StringVar(value="250")
+        self._active_jobs = 0
+        self._export_active = False
 
         self._build_style()
         self._build_layout()
@@ -419,17 +436,37 @@ class TTSApp:
         }
         return text, output_path, params
 
-    def _set_busy(self, busy: bool) -> None:
+    def _set_busy(self, busy: bool, *, exclusive: bool = False) -> None:
+        """Actualiza el estado de tareas sin bloquear otras preescuchas.
+
+        La exportacion es exclusiva para proteger el archivo elegido por la
+        persona usuaria. Las preescuchas usan rutas unicas y pueden ejecutarse
+        en paralelo; el contador evita reactivar la interfaz antes de tiempo.
+        """
+        was_busy = self._active_jobs > 0
         if busy:
+            self._active_jobs += 1
+            if exclusive:
+                self._export_active = True
+        else:
+            self._active_jobs = max(0, self._active_jobs - 1)
+            if exclusive:
+                self._export_active = False
+
+        is_busy = self._active_jobs > 0
+        if self._export_active:
             self.convert_btn.state(["disabled"])
             self.preview_quick_btn.state(["disabled"])
             self.preview_final_btn.state(["disabled"])
+        else:
+            self.convert_btn.state(["!disabled"])
+            self.preview_quick_btn.state(["!disabled"])
+            self.preview_final_btn.state(["!disabled"])
+
+        if is_busy and not was_busy:
             self.progress.start(10)
-            return
-        self.progress.stop()
-        self.convert_btn.state(["!disabled"])
-        self.preview_quick_btn.state(["!disabled"])
-        self.preview_final_btn.state(["!disabled"])
+        elif was_busy and not is_busy:
+            self.progress.stop()
 
     def preview_quick_tts(self) -> None:
         self._preview_tts(final_quality=False)
@@ -450,7 +487,7 @@ class TTSApp:
                 messagebox.showwarning("Sin texto", "No hay texto suficiente para preescucha.")
                 return
 
-        preview_path = Path(tempfile.gettempdir()) / "studio_tts_latino_preview.mp3"
+        preview_path = create_preview_path(final_quality)
         self._set_busy(True)
         self.set_status(
             "Generando preescucha final..." if final_quality else "Generando preescucha rapida..."
@@ -488,7 +525,7 @@ class TTSApp:
             )
             return
 
-        self._set_busy(True)
+        self._set_busy(True, exclusive=True)
         self.set_status("Generando audio profesional...")
 
         def worker() -> None:
@@ -504,7 +541,7 @@ class TTSApp:
                 self.root.after(0, lambda message=error_message: messagebox.showerror("Error", message))
                 self.root.after(0, lambda: self.set_status("Error"))
             finally:
-                self.root.after(0, lambda: self._set_busy(False))
+                self.root.after(0, lambda: self._set_busy(False, exclusive=True))
 
         threading.Thread(target=worker, daemon=True).start()
 

@@ -22,6 +22,7 @@ Este archivo registra cambios importantes del proyecto.
 - Documentacion historica organizada en la carpeta `docs/`.
 - Preescucha temporal movida fuera de la carpeta del proyecto.
 - Estilos de locucion convertidos en ajustes reales de ritmo, tono y pausas.
+- Las pruebas de audio usan nombres temporales unicos y se limpian al finalizar.
 
 ### Corregido
 
@@ -31,10 +32,14 @@ Este archivo registra cambios importantes del proyecto.
 - Los archivos de entrada inexistentes muestran errores claros sin traceback.
 - Las voces locales con idiomas expresados como bytes ya no producen errores.
 - La deteccion de voces masculinas ya no clasifica `female` como `male`.
+- Las preescuchas rapida y final ya pueden generarse en paralelo sin compartir archivos.
 
 ### Seguridad
 
 - Escritura atomica de audio y preferencias para evitar archivos incompletos.
+- Validacion del motor para los parametros de voz, formato, perfil y mastering,
+  incluso fuera de la CLI o GUI.
+- Archivos temporales unicos para sintesis, conversion local y mastering.
 - Exclusiones de secretos, entornos virtuales, audios y artefactos de build.
 - Definicion de privacidad para textos enviados a proveedores externos.
 

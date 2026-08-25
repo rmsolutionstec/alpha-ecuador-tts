@@ -1,0 +1,32 @@
+$ErrorActionPreference = "Stop"
+
+$projectRoot = Split-Path -Parent $PSScriptRoot
+$pythonExecutable = Join-Path $projectRoot ".venv\Scripts\python.exe"
+$dictionaryPath = Join-Path $projectRoot "studio_tts_latino\data\pronunciation_es_mx.json"
+
+if (-not (Test-Path -LiteralPath $pythonExecutable)) {
+    throw "No existe .venv. Crea el entorno e instala requirements.txt antes de continuar."
+}
+
+if (-not (Test-Path -LiteralPath $dictionaryPath)) {
+    throw "No se encontro el diccionario de pronunciacion incluido en la aplicacion."
+}
+
+Push-Location -LiteralPath $projectRoot
+try {
+    & $pythonExecutable -m PyInstaller `
+        --noconfirm `
+        --clean `
+        --windowed `
+        --name "StudioTTSLatino" `
+        --add-data "$dictionaryPath;studio_tts_latino/data" `
+        "gui.py"
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "No se pudo crear el ejecutable. Instala PyInstaller con pip install '.[build]'."
+    }
+
+    Write-Host "Ejecutable generado en dist\StudioTTSLatino"
+} finally {
+    Pop-Location
+}

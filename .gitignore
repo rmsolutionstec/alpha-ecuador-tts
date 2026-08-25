@@ -1,0 +1,41 @@
+# Entornos virtuales y configuracion local.
+.venv/
+.venv-*/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Archivos generados por Python.
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Artefactos de empaquetado.
+build/
+dist/
+*.egg-info/
+*.spec
+
+# Audio y archivos temporales.
+*.mp3
+*.wav
+*.ogg
+*.flac
+*.part
+*.tmp
+logs/
+tests/tmp*/
+
+# Editores y archivos del sistema operativo.
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini

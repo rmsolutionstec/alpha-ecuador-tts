@@ -20,8 +20,10 @@ voces en espanol latino. Es un producto de **Alpha Ecuador**, desarrollado por
 - Ajustes reales de ritmo, tono, emocion y pausas orientativas.
 - Diccionario personalizable para siglas, marcas y palabras dificiles.
 - Exportacion MP3 y mastering opcional con FFmpeg.
+- Generacion opcional de subtitulos `.srt` por frases junto al MP3.
 - Preescucha rapida y preescucha final.
-- Preferencias locales, mensajes de error claros y pruebas automatizadas.
+- Historial local de renders con metadatos, sin guardar guiones.
+- Preferencias locales, mensajes de estado y pruebas automatizadas.
 - Interfaz de escritorio y linea de comandos.
 
 ## Inicio rapido
@@ -71,6 +73,7 @@ alpha-studio-tts-latino/
 │   ├── cli.py                  Interfaz de comandos
 │   ├── gui.py                  Aplicacion de escritorio
 │   ├── settings.py             Preferencias y registros locales
+│   ├── subtitles.py            Generacion opcional de archivos SRT
 │   └── data/                   Recursos incluidos
 ├── docs/                       Documentacion de producto y operacion
 ├── examples/                   Guiones y diccionarios de ejemplo
@@ -125,6 +128,8 @@ debe instalarse por separado cuando el usuario necesite mastering o el proveedor
 - La aplicacion no debe almacenar guiones en registros tecnicos.
 - Las pausas expresadas en milisegundos son orientativas: Edge no permite definir silencios
   SSML arbitrarios en este flujo.
+- Los subtitulos SRT se generan por frases usando la duracion real del audio cuando `ffprobe`
+  esta disponible; si no, se usa una estimacion basada en palabras por minuto.
 - Los audios, entornos virtuales, secretos y configuraciones privadas se excluyen del repositorio.
 
 ## Apoyar el proyecto

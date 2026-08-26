@@ -36,7 +36,9 @@ desarrollador.
 3. Después de cambios visuales, revisa la GUI renderizada y comprueba textos, espacios,
    scroll y controles sin recortes.
 4. Para un entregable Windows, ejecuta `scripts\build_windows.ps1` y verifica
-   `dist\AlphaStudioTTSLatino\AlphaStudioTTSLatino.exe`.
+   `dist\AlphaStudioTTSLatino\AlphaStudioTTSLatino.exe`. Si se solicita instalador,
+   ejecuta también `scripts\build_installer.ps1` (requiere Inno Setup) y valida el
+   resultado en una máquina limpia antes de publicarlo.
 5. No almacenes guiones de usuario en preferencias, registros ni el repositorio.
 
 ## Cierre y repositorio

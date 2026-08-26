@@ -59,3 +59,16 @@ python -m pip install ".[build]"
 
 Verifica el ejecutable en otro equipo antes de distribuirlo. Los directorios `build/`
 y `dist/` se generan localmente y no deben agregarse al repositorio.
+
+## Crear un instalador de Windows
+
+Después de preparar el ejecutable, instala [Inno Setup](https://jrsoftware.org/isinfo.php)
+en el equipo de compilación y ejecuta:
+
+```powershell
+.\scripts\build_installer.ps1
+```
+
+El resultado es `dist\installer\AlphaStudioTTSLatino-Setup.exe`. El script detiene el
+proceso con un mensaje claro si Inno Setup no está instalado. Valida el instalador en una
+máquina Windows limpia antes de distribuirlo.

@@ -6,7 +6,8 @@
 2. Escribe o carga un guion de texto.
 3. Selecciona un perfil como punto de partida y después la voz que prefieras.
 4. Ajusta velocidad, volumen, estilo, emocion y pausas.
-5. Usa la preescucha rapida o final.
+5. Usa la preescucha rápida para comprobar una parte del guion o la preescucha final para
+   evaluar el guion completo.
 6. Elige una ruta y exporta el MP3.
 
 La aplicacion guarda preferencias de voz y configuracion en la carpeta de datos local
@@ -67,8 +68,35 @@ duracion exacta en milisegundos.
 
 ## Preescucha
 
-La preescucha rapida utiliza un fragmento corto del guion. No promete una duracion
-fija. Los archivos de preescucha se crean en el directorio temporal del sistema.
+La **preescucha rápida** utiliza un fragmento corto del guion. La **preescucha final**
+procesa el guion completo con el mismo flujo de calidad de la exportación. Ambas se
+guardan temporalmente fuera del proyecto y, al terminar, puedes usar **Repetir audio**
+para escucharlas dentro de la aplicación desde el inicio. **Detener** pausa la reproducción.
+
+La barra inferior muestra las etapas de preparación, síntesis, guardado y creación de SRT;
+no almacena el texto del guion.
+
+## Diccionario de pronunciación
+
+El diccionario es un archivo JSON opcional pensado para siglas, nombres de marca y palabras
+que el motor pronuncia mal. No altera el texto que escribiste ni lo guarda en el historial.
+
+```json
+{
+  "TTS": "te te ese",
+  "Alpha Ecuador": "Alfa Ecuador"
+}
+```
+
+Ábrelo desde **Diccionario de pronunciación opcional** para elegir tu propio archivo. Si no
+necesitas correcciones, déjalo cerrado y el audio se generará normalmente.
+
+## Subtítulos SRT
+
+Activa **Crear subtítulos SRT** antes de exportar para obtener un archivo `.srt` junto al MP3.
+Con Edge, la aplicación usa las marcas temporales por palabra que el proveedor entrega y las
+agrupa en líneas cortas. Con una voz local, usa una distribución proporcional por frases como
+respaldo.
 
 ## Cómo escribir para una locución natural
 

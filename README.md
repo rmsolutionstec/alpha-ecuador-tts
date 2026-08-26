@@ -25,8 +25,9 @@ voces en espanol latino. Es un producto de **Alpha Ecuador**, desarrollado por
 - Ajustes reales de ritmo, tono, emocion y pausas orientativas.
 - Diccionario personalizable para siglas, marcas y palabras dificiles.
 - Exportacion MP3 y mastering opcional con FFmpeg.
-- Generacion opcional de subtitulos `.srt` por frases junto al MP3.
-- Preescucha rapida y preescucha final.
+- Generacion opcional de subtitulos `.srt`: usa marcas de palabra de Edge cuando el
+  proveedor las entrega y un calculo proporcional como respaldo.
+- Preescucha rápida (fragmento) y final (guion completo), con reproducción integrada.
 - Reproduccion integrada de la ultima preescucha dentro de la ventana.
 - Historial local de renders con metadatos, sin guardar guiones.
 - Preferencias locales, mensajes de estado y pruebas automatizadas.
@@ -127,6 +128,16 @@ python -m pip install ".[build]"
 El resultado se crea en `dist/AlphaStudioTTSLatino`. FFmpeg no se incluye automaticamente;
 debe instalarse por separado cuando el usuario necesite mastering o el proveedor local.
 
+Para crear un instalador `.exe` distribuible, instala [Inno Setup](https://jrsoftware.org/isinfo.php)
+en el equipo de compilación y ejecuta:
+
+```powershell
+.\scripts\build_installer.ps1
+```
+
+El instalador se generará en `dist/installer`. Antes de publicarlo, pruébalo en un equipo
+Windows limpio.
+
 ## Privacidad y limites
 
 - `edge` requiere internet y envia el texto al servicio externo usado por `edge-tts`.
@@ -134,8 +145,10 @@ debe instalarse por separado cuando el usuario necesite mastering o el proveedor
 - La aplicacion no debe almacenar guiones en registros tecnicos.
 - Las pausas expresadas en milisegundos son orientativas: Edge no permite definir silencios
   SSML arbitrarios en este flujo.
-- Los subtitulos SRT se generan por frases usando la duracion real del audio cuando `ffprobe`
-  esta disponible; si no, se usa una estimacion basada en palabras por minuto.
+- Con Edge, los subtítulos SRT aprovechan las marcas temporales por palabra entregadas por
+  el proveedor y se agrupan en fragmentos legibles. Con el proveedor local, se distribuyen
+  por frases usando la duración real del audio cuando `ffprobe` está disponible; si no, se
+  usa una estimación basada en palabras por minuto.
 - Los audios, entornos virtuales, secretos y configuraciones privadas se excluyen del repositorio.
 
 ## Apoyar el proyecto

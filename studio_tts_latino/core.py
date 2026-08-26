@@ -426,6 +426,7 @@ async def _synthesize_edge_async(
     pitch: str,
     style: Optional[str],
     pause_ms: int,
+    word_timings: Optional[list[tuple[str, float, float]]] = None,
 ) -> None:
     # Edge no permite SSML personalizado: los estilos se aplican a prosodia real.
     del style
@@ -440,6 +441,16 @@ async def _synthesize_edge_async(
                     audio_data = chunk["data"]
                     audio_file.write(audio_data)
                     received_audio_bytes += len(audio_data)
+                elif chunk["type"] == "WordBoundary" and word_timings is not None:
+                    # edge-tts entrega offset y duración en unidades de 100 ns.
+                    word = str(chunk.get("text", "")).strip()
+                    try:
+                        start = float(chunk.get("offset", 0)) / 10_000_000
+                        end = start + float(chunk.get("duration", 0)) / 10_000_000
+                    except (TypeError, ValueError):
+                        continue
+                    if word and end >= start:
+                        word_timings.append((word, start, end))
         if received_audio_bytes <= 0:
             raise RuntimeError("El proveedor no devolvio datos de audio.")
         _commit_audio(temporary_path, output_path)
@@ -477,6 +488,7 @@ def synthesize_edge_natural(
     pause_ms: int,
     emotion: str,
     pitch_hz: Optional[int] = None,
+    word_timings: Optional[list[tuple[str, float, float]]] = None,
 ) -> bool:
     emotion_pitch = (
         pitch_hz
@@ -495,6 +507,7 @@ def synthesize_edge_natural(
             pitch=_edge_pitch(emotion_pitch),
             style=style,
             pause_ms=pause_ms,
+            word_timings=word_timings,
         )
     )
     return True
@@ -511,6 +524,7 @@ def synthesize_edge(
     pause_ms: int,
     natural_mode: bool,
     emotion: str,
+    word_timings: Optional[list[tuple[str, float, float]]] = None,
 ) -> None:
     voice = pick_edge_voice(voice_hint, prefer_male)
     styled_rate, styled_pause, styled_pitch = apply_style_tuning(
@@ -526,6 +540,7 @@ def synthesize_edge(
         styled_pause,
         emotion,
         pitch_hz=styled_pitch,
+        word_timings=word_timings,
     ):
         return
 
@@ -541,6 +556,7 @@ def synthesize_edge(
             pitch=_edge_pitch(styled_pitch),
             style=style,
             pause_ms=styled_pause,
+            word_timings=word_timings,
         )
     )
 
@@ -684,6 +700,7 @@ def synthesize(
     emotion: str = "neutro",
     pronunciation_file: Optional[str] = DEFAULT_PRONUNCIATION_FILE,
     mastering_preset: str = DEFAULT_MASTERING_PRESET,
+    word_timings: Optional[list[tuple[str, float, float]]] = None,
 ) -> None:
     if not isinstance(text, str):
         raise ValueError("El texto a sintetizar debe ser texto.")
@@ -753,6 +770,7 @@ def synthesize(
             pause_ms,
             natural_mode,
             emotion,
+            word_timings=word_timings,
         )
         if enable_mastering:
             master_mp3_inplace(output_path, mastering_preset)

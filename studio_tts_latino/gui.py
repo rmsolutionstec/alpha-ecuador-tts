@@ -110,6 +110,7 @@ class TTSApp(QMainWindow):
 
     status_requested = Signal(str)
     error_requested = Signal(str, str)
+    progress_requested = Signal(int, str)
     preview_ready = Signal(str)
     task_finished = Signal(bool)
 
@@ -133,6 +134,7 @@ class TTSApp(QMainWindow):
     def _connect_signals(self) -> None:
         self.status_requested.connect(self.set_status)
         self.error_requested.connect(self._show_error)
+        self.progress_requested.connect(self.set_progress)
         self.preview_ready.connect(self._open_preview)
         self.task_finished.connect(self._finish_task)
 
@@ -360,6 +362,10 @@ class TTSApp(QMainWindow):
         dictionary_button = QPushButton("Elegir…")
         dictionary_button.clicked.connect(self.choose_pronunciation_file)
         dictionary_row.addWidget(dictionary_button, 0, 2)
+        dictionary_help = QLabel("Úsalo para siglas, marcas o palabras que se pronuncian mal. No cambia tu texto guardado.")
+        dictionary_help.setObjectName("muted")
+        dictionary_help.setWordWrap(True)
+        dictionary_row.addWidget(dictionary_help, 1, 1, 1, 2)
         layout.addWidget(self.dictionary_panel)
         self.dictionary_panel.setVisible(False)
         self.dictionary_toggle.toggled.connect(self._toggle_dictionary_panel)
@@ -373,9 +379,9 @@ class TTSApp(QMainWindow):
         self.preview_final_btn = QPushButton("Preescucha final")
         self.preview_final_btn.setToolTip("Genera una preescucha completa con mastering.")
         self.preview_final_btn.clicked.connect(self.preview_final_tts)
-        self.preview_play_btn = QPushButton("Reproducir aquí")
+        self.preview_play_btn = QPushButton("Repetir audio")
         self.preview_play_btn.setEnabled(False)
-        self.preview_play_btn.setToolTip("Reproduce la última preescucha dentro de la aplicación.")
+        self.preview_play_btn.setToolTip("Vuelve a reproducir desde el inicio la última preescucha.")
         self.preview_play_btn.clicked.connect(self.play_preview)
         self.preview_stop_btn = QPushButton("Detener")
         self.preview_stop_btn.setEnabled(False)
@@ -428,6 +434,12 @@ class TTSApp(QMainWindow):
     def set_status(self, text: str) -> None:
         self.status_label.setText(text)
         self.status_pill.setText("Procesando…" if self._active_jobs else "Listo para generar")
+
+    @Slot(int, str)
+    def set_progress(self, value: int, text: str) -> None:
+        self.progress.setRange(0, 100)
+        self.progress.setValue(max(0, min(100, value)))
+        self.set_status(text)
 
     def _update_text_metrics(self) -> None:
         text = self.text_widget.toPlainText().strip()
@@ -570,7 +582,9 @@ class TTSApp(QMainWindow):
         self.convert_btn.setEnabled(not self._export_active)
         self.preview_quick_btn.setEnabled(not self._export_active)
         self.preview_final_btn.setEnabled(not self._export_active)
-        self.progress.setRange(0, 0) if self._active_jobs else self.progress.setRange(0, 1)
+        if not self._active_jobs:
+            self.progress.setRange(0, 100)
+            self.progress.setValue(0)
         self.status_pill.setText("Procesando…" if self._active_jobs else "Listo para generar")
 
     @Slot(bool)
@@ -596,12 +610,13 @@ class TTSApp(QMainWindow):
                 return
         preview_path = create_preview_path(final_quality)
         self._set_busy(True)
-        self.set_status("Generando preescucha final…" if final_quality else "Generando preescucha rápida…")
+        self.set_progress(10, "Preparando preescucha final…" if final_quality else "Preparando preescucha rápida…")
 
         def worker() -> None:
             try:
+                self.progress_requested.emit(45, "Sintetizando voz…")
                 synthesize(text, preview_path, enable_mastering=final_quality, **params)
-                self.status_requested.emit(f"Preescucha lista: {preview_path.name}")
+                self.progress_requested.emit(100, f"Preescucha lista: {preview_path.name}")
                 self.preview_ready.emit(str(preview_path))
             except Exception as exc:
                 LOGGER.exception("Error durante la preescucha")
@@ -622,11 +637,20 @@ class TTSApp(QMainWindow):
             return
         create_srt = self.srt_check.isChecked()
         self._set_busy(True, exclusive=True)
-        self.set_status("Generando audio profesional…")
+        self.set_progress(10, "Preparando exportación MP3…")
 
         def worker() -> None:
             try:
-                synthesize(text, output_path, enable_mastering=True, **params)
+                self.progress_requested.emit(45, "Sintetizando voz…")
+                word_timings: list[tuple[str, float, float]] = []
+                synthesize(
+                    text,
+                    output_path,
+                    enable_mastering=True,
+                    word_timings=word_timings,
+                    **params,
+                )
+                self.progress_requested.emit(75, "Guardando render y metadatos…")
                 try:
                     append_render_history({
                         "output_name": output_path.name,
@@ -639,15 +663,16 @@ class TTSApp(QMainWindow):
                     LOGGER.warning("No se pudo guardar el historial del render: %s", exc)
                 message = f"Exportado MP3: {output_path.name}"
                 if create_srt:
+                    self.progress_requested.emit(88, "Generando subtítulos SRT…")
                     subtitle_path = output_path.with_suffix(".srt")
                     try:
-                        write_srt(text, output_path, subtitle_path)
+                        write_srt(text, output_path, subtitle_path, word_timings=word_timings)
                         message += f" · SRT: {subtitle_path.name}"
                     except (OSError, ValueError) as exc:
                         LOGGER.warning("No se pudo generar el SRT: %s", exc)
                 if not has_ffmpeg():
                     message += " (sin mastering: FFmpeg no instalado)"
-                self.status_requested.emit(message)
+                self.progress_requested.emit(100, message)
             except Exception as exc:
                 LOGGER.exception("Error durante la exportación")
                 self.error_requested.emit("Error al exportar", str(exc))
@@ -670,6 +695,7 @@ class TTSApp(QMainWindow):
 
     def play_preview(self) -> None:
         if self._preview_path and self._preview_path.is_file():
+            self._preview_player.setPosition(0)
             self._preview_player.play()
 
     def stop_preview(self) -> None:

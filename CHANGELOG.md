@@ -6,6 +6,16 @@ Este archivo registra cambios importantes del proyecto.
 
 ### Cambiado
 
+- Los controles de preescucha aclaran sus funciones: rápida, final, repetir el audio ya
+  generado y detener la reproducción integrada.
+- El diccionario de pronunciación ahora explica en la propia interfaz que sirve para siglas,
+  marcas y palabras difíciles, sin modificar ni guardar el guion.
+- La barra de estado muestra etapas y porcentaje durante la preescucha, la exportación y la
+  generación de subtítulos.
+- Los subtítulos SRT aprovechan las marcas de palabra de Edge cuando están disponibles y
+  conservan una distribución proporcional por frases como respaldo para la voz local.
+- Se añadió un script de instalador Inno Setup para crear
+  `AlphaStudioTTSLatino-Setup.exe` después del build de Windows.
 - Las casillas opcionales muestran siempre sus rótulos y los selectores tienen una flecha
   visible para diferenciarse de un campo de texto.
 - La preferencia de voz masculina de la interfaz es opcional, inicia desactivada y no se

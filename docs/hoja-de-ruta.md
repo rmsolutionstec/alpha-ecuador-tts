@@ -30,8 +30,9 @@ Fecha de actualizacion: 2026-08-25
 - [x] Separar preescucha rapida y preescucha final en GUI.
 - [x] Guardado local de preferencias de usuario (ultima voz, ruta, perfil).
 - [x] Historial local de renders con metadatos, sin almacenar guiones.
-- [x] Generación opcional de subtítulos `.srt` por frases.
-- [ ] Mensajes de estado con progreso mas descriptivo.
+- [x] Generación opcional de subtítulos `.srt`, con marcas por palabra de Edge cuando están
+  disponibles y respaldo proporcional para la voz local.
+- [x] Mensajes de estado con progreso descriptivo para preescucha, exportación y SRT.
 
 ## Fase 5 - Operacion y release (pendiente)
 
@@ -41,7 +42,8 @@ Fecha de actualizacion: 2026-08-25
 - [x] Guia de QA antes de publicacion.
 - [x] Licencia MIT, politica de seguridad y guia de contribucion.
 - [x] Workflow de pruebas automaticas para GitHub.
-- [ ] Generar un instalador y validarlo en una maquina limpia.
+- [x] Script para generar instalador con Inno Setup.
+- [ ] Generar el instalador y validarlo en una máquina limpia.
 
 ## Fase 6 - Comunidad y sostenibilidad
 
@@ -59,10 +61,9 @@ Fecha de actualizacion: 2026-08-25
 
 ## Prioridad inmediata (siguiente sprint)
 
-1. Mejorar subtítulos `.srt` con marcas de tiempo por palabra cuando el proveedor lo permita.
-2. Instalador de Windows validado en un equipo limpio.
-3. Activacion de GitHub Sponsors y publicacion inicial.
-4. Demo web limitada y separada del hosting comercial.
+1. Instalar Inno Setup, generar el instalador y validarlo en un equipo limpio.
+2. Activación de GitHub Sponsors con la cuenta real del mantenedor y un enlace de apoyo.
+3. Demo web limitada y separada del hosting comercial.
 
 ## Auditoria tecnica 2026-05-14
 

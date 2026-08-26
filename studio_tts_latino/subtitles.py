@@ -50,8 +50,45 @@ def _timestamp(seconds: float) -> str:
     return f"{hours:02}:{minutes:02}:{secs:02},{millis:03}"
 
 
-def write_srt(text: str, audio_path: Path, subtitle_path: Path) -> Path:
-    """Escribe subtítulos por frase distribuidos sobre la duración del audio."""
+def _word_timed_captions(
+    word_timings: list[tuple[str, float, float]], max_chars: int = 42, max_words: int = 7
+) -> list[tuple[str, float, float]]:
+    """Agrupa límites de palabra de Edge en subtítulos cortos y legibles."""
+    captions: list[tuple[str, float, float]] = []
+    words: list[str] = []
+    start = end = 0.0
+    for word, word_start, word_end in word_timings:
+        cleaned = str(word).strip()
+        if not cleaned:
+            continue
+        if words and (len(words) >= max_words or len(" ".join(words + [cleaned])) > max_chars):
+            captions.append((" ".join(words), start, max(start, end)))
+            words = []
+        if not words:
+            start = max(0.0, float(word_start))
+        words.append(cleaned)
+        end = max(start, float(word_end))
+    if words:
+        captions.append((" ".join(words), start, max(start, end)))
+    return captions
+
+
+def write_srt(
+    text: str,
+    audio_path: Path,
+    subtitle_path: Path,
+    word_timings: list[tuple[str, float, float]] | None = None,
+) -> Path:
+    """Escribe un SRT con marcas de Edge o una estimación basada en el audio."""
+    timed_captions = _word_timed_captions(word_timings) if word_timings else []
+    if timed_captions:
+        lines: list[str] = []
+        for index, (caption, start, end) in enumerate(timed_captions, start=1):
+            lines.extend([str(index), f"{_timestamp(start)} --> {_timestamp(end)}", caption, ""])
+        subtitle_path.parent.mkdir(parents=True, exist_ok=True)
+        subtitle_path.write_text("\n".join(lines), encoding="utf-8")
+        return subtitle_path
+
     chunks = split_subtitle_chunks(text)
     if not chunks:
         raise ValueError("No hay texto para generar subtítulos.")

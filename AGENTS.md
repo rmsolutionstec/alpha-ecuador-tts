@@ -17,6 +17,8 @@ desarrollador.
   el proveedor `edge` y consulta las voces instaladas cuando se selecciona `local`.
 - La opción de preferencia masculina se mantiene desactivada por defecto y los perfiles
   de la GUI no deben modificarla; es una decisión explícita del usuario.
+- Los menús emergentes y las casillas deben mantener contraste legible en Windows, con
+  rótulos visibles. Añade ayuda contextual cuando un control no cambie otro ajuste.
 - Conserva `studio_tts_latino` como paquete interno por compatibilidad. La marca visible
   y el ejecutable son **Alpha Studio TTS Latino** y `AlphaStudioTTSLatino.exe`.
 - Las preferencias nuevas se guardan en `%LOCALAPPDATA%\AlphaStudioTTSLatino`; se leen

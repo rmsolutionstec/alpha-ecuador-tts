@@ -6,6 +6,8 @@ Este archivo registra cambios importantes del proyecto.
 
 ### Cambiado
 
+- Las casillas opcionales muestran siempre sus rótulos y los selectores tienen una flecha
+  visible para diferenciarse de un campo de texto.
 - La preferencia de voz masculina de la interfaz es opcional, inicia desactivada y no se
   altera al cambiar de perfil.
 - Los selectores de la interfaz usan un menú de alto contraste. El selector de voz se

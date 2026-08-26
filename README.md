@@ -19,6 +19,8 @@ voces en espanol latino. Es un producto de **Alpha Ecuador**, desarrollado por
 - Selector de voces adaptable al proveedor, con menús de alto contraste y entrada manual
   para una voz compatible.
 - La preferencia de voz masculina es opcional y nunca se activa por defecto.
+- Los perfiles son puntos de partida: puedes cambiar la voz manualmente sin alterar el
+  perfil seleccionado.
 - Perfiles de locucion para noticias, documentales, anuncios y narraciones.
 - Ajustes reales de ritmo, tono, emocion y pausas orientativas.
 - Diccionario personalizable para siglas, marcas y palabras dificiles.

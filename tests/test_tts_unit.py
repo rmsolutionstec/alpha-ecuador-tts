@@ -31,6 +31,10 @@ class TestTTSUnit(unittest.TestCase):
         self.assertIn("senor Gomez", out)
         self.assertIn("doctor Perez habla", out)
 
+    def test_preprocess_text_preserves_punctuation_for_reading_rhythm(self):
+        source = "Hola, mundo; hoy veremos: texto, voz y ritmo."
+        self.assertEqual(tts.preprocess_text(source), source)
+
     def test_apply_pronunciation_map_case_insensitive(self):
         text = "OpenAI usa SQL"
         mapping = {"openai": "open ei ai", "SQL": "sequel"}

@@ -51,11 +51,16 @@ QLabel#statusPill { background: #E6F4EA; color: #137333; border-radius: 10px; pa
 QLineEdit, QComboBox, QTextEdit { background: #FFFFFF; color: #172B4D; border: 1px solid #C8D5E3; border-radius: 7px; padding: 7px 9px; font: 10pt "Segoe UI"; }
 QTextEdit { padding: 12px; }
 QLineEdit:focus, QComboBox:focus, QTextEdit:focus { border: 2px solid #3A86E9; }
-QComboBox::drop-down { border: 0; width: 28px; }
+QComboBox::drop-down { border-left: 1px solid #C8D5E3; background: #EDF4FC; width: 28px; border-top-right-radius: 7px; border-bottom-right-radius: 7px; }
+QComboBox::down-arrow { width: 10px; height: 10px; }
 QComboBox QAbstractItemView { background: #FFFFFF; color: #172B4D; border: 1px solid #9DB9D6; outline: 0; padding: 4px; selection-background-color: #2475D0; selection-color: #FFFFFF; }
 QComboBox QAbstractItemView::item { min-height: 28px; padding: 4px 8px; border-radius: 4px; }
 QComboBox QAbstractItemView::item:hover { background: #E8F1FC; color: #102A43; }
 QComboBox QAbstractItemView::item:selected { background: #2475D0; color: #FFFFFF; }
+QCheckBox { color: #172B4D; spacing: 8px; font: 9pt "Segoe UI"; }
+QCheckBox::indicator { width: 15px; height: 15px; border: 1px solid #7E9FBE; border-radius: 3px; background: #FFFFFF; }
+QCheckBox::indicator:hover { border-color: #2475D0; background: #EDF4FC; }
+QCheckBox::indicator:checked { background: #2475D0; border-color: #145DAA; }
 QPushButton { background: #FFFFFF; color: #172B4D; border: 1px solid #C8D5E3; border-radius: 7px; padding: 8px 12px; font: 600 10pt "Segoe UI"; }
 QPushButton:hover { background: #EDF4FC; border-color: #82AEE0; }
 QPushButton:disabled { color: #97A6B5; background: #F2F5F8; border-color: #E1E8EF; }
@@ -238,6 +243,9 @@ class TTSApp(QMainWindow):
         self.emotion_combo = self._combo(sorted(EMOTION_PRESETS), "neutro")
         form.addRow("Perfil", self.profile_combo)
         form.addRow("Voz latina", self.voice_combo)
+        voice_hint = QLabel("Puedes cambiar la voz sin modificar el perfil elegido.")
+        voice_hint.setObjectName("muted")
+        form.addRow("", voice_hint)
         form.addRow("Velocidad", self._slider_row(self.rate_slider, self.rate_value))
         form.addRow("Emoción", self.emotion_combo)
         layout.addWidget(basic)

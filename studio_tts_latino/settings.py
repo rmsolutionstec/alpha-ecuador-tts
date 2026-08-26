@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -12,6 +13,7 @@ from typing import Any, Optional
 LOGGER = logging.getLogger(__name__)
 APPLICATION_DIRECTORY = "AlphaStudioTTSLatino"
 LEGACY_APPLICATION_DIRECTORY = "StudioTTSLatino"
+RENDER_HISTORY_FILENAME = "render_history.json"
 
 
 def get_app_data_directory() -> Path:
@@ -24,6 +26,11 @@ def get_app_data_directory() -> Path:
 
 def get_preferences_path() -> Path:
     return get_app_data_directory() / "preferences.json"
+
+
+def get_render_history_path() -> Path:
+    """Ruta del historial local; contiene solo metadatos, nunca el guion."""
+    return get_app_data_directory() / RENDER_HISTORY_FILENAME
 
 
 def get_legacy_preferences_path() -> Path:
@@ -64,6 +71,48 @@ def save_preferences(
     )
     temporary_path.replace(preferences_path)
     return preferences_path
+
+
+def load_render_history(path: Optional[Path] = None) -> list[dict[str, Any]]:
+    history_path = path or get_render_history_path()
+    if not history_path.is_file():
+        return []
+    try:
+        value = json.loads(history_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        LOGGER.warning("No se pudo leer el historial de renders: %s", exc)
+        return []
+    if not isinstance(value, list):
+        return []
+    return [entry for entry in value if isinstance(entry, dict)]
+
+
+def append_render_history(
+    metadata: dict[str, Any],
+    path: Optional[Path] = None,
+    max_entries: int = 20,
+) -> Path:
+    """Añade metadatos permitidos al historial y descarta cualquier texto."""
+    allowed = {
+        "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "output_name": str(metadata.get("output_name", "")),
+        "provider": str(metadata.get("provider", "")),
+        "profile": str(metadata.get("profile", "")),
+        "voice": str(metadata.get("voice", "")),
+        "duration_seconds": float(metadata.get("duration_seconds", 0.0) or 0.0),
+    }
+    history_path = path or get_render_history_path()
+    history = load_render_history(history_path)
+    history.append(allowed)
+    history = history[-max(1, max_entries):]
+    history_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = history_path.with_suffix(".tmp")
+    temporary_path.write_text(
+        json.dumps(history, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    temporary_path.replace(history_path)
+    return history_path
 
 
 def configure_logging() -> Optional[Path]:

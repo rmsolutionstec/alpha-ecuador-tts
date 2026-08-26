@@ -14,8 +14,8 @@ from uuid import uuid4
 from PySide6.QtCore import Qt, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
-    QApplication, QCheckBox, QComboBox, QFileDialog, QFormLayout, QFrame,
-    QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
+    QApplication, QCheckBox, QComboBox, QDialog, QFileDialog, QFormLayout, QFrame,
+    QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QListWidget, QMainWindow,
     QMessageBox, QProgressBar, QPushButton, QScrollArea, QSlider, QSplitter,
     QTextEdit, QToolButton, QVBoxLayout, QWidget,
 )
@@ -27,7 +27,11 @@ from .core import (
     EMOTION_PRESETS, MASTERING_PRESETS, VOICE_PROFILES, has_ffmpeg,
     normalize_output_path, synthesize,
 )
-from .settings import configure_logging, load_preferences, save_preferences
+from .settings import (
+    append_render_history, configure_logging, load_preferences, load_render_history,
+    save_preferences,
+)
+from .subtitles import write_srt
 
 
 LOGGER = logging.getLogger(__name__)
@@ -315,17 +319,24 @@ class TTSApp(QMainWindow):
         self.dictionary_panel.setVisible(False)
         self.dictionary_toggle.toggled.connect(self._toggle_dictionary_panel)
         actions = QHBoxLayout()
+        self.srt_check = QCheckBox("Crear subtítulos SRT")
+        self.srt_check.setToolTip("Genera un archivo .srt sincronizado por frases junto al MP3.")
+        layout.addWidget(self.srt_check)
         self.preview_quick_btn = QPushButton("Preescucha rápida")
         self.preview_quick_btn.setToolTip("Genera los primeros 260 caracteres sin mastering.")
         self.preview_quick_btn.clicked.connect(self.preview_quick_tts)
         self.preview_final_btn = QPushButton("Preescucha final")
         self.preview_final_btn.setToolTip("Genera una preescucha completa con mastering.")
         self.preview_final_btn.clicked.connect(self.preview_final_tts)
+        history_btn = QPushButton("Historial")
+        history_btn.setToolTip("Consulta los últimos renders sin guardar el guion.")
+        history_btn.clicked.connect(self.show_render_history)
         self.convert_btn = QPushButton("Generar MP3")
         self.convert_btn.setObjectName("primaryButton")
         self.convert_btn.clicked.connect(self.run_tts)
         actions.addWidget(self.preview_quick_btn)
         actions.addWidget(self.preview_final_btn)
+        actions.addWidget(history_btn)
         actions.addStretch()
         actions.addWidget(self.convert_btn)
         layout.addLayout(actions)
@@ -439,6 +450,29 @@ class TTSApp(QMainWindow):
         if path:
             self.pronunciation_edit.setText(path)
 
+    def show_render_history(self) -> None:
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Historial de renders")
+        dialog.resize(620, 320)
+        layout = QVBoxLayout(dialog)
+        entries = QListWidget()
+        history = load_render_history()
+        if not history:
+            entries.addItem("Todavía no hay renders registrados.")
+        else:
+            for entry in reversed(history):
+                created = str(entry.get("created_at", ""))
+                output_name = str(entry.get("output_name", "salida.mp3"))
+                profile = str(entry.get("profile", ""))
+                voice = str(entry.get("voice", ""))
+                provider = str(entry.get("provider", ""))
+                entries.addItem(f"{created} · {output_name} · {profile} · {voice} ({provider})")
+        layout.addWidget(entries)
+        close_button = QPushButton("Cerrar")
+        close_button.clicked.connect(dialog.accept)
+        layout.addWidget(close_button, alignment=Qt.AlignmentFlag.AlignRight)
+        dialog.exec()
+
     @Slot(str)
     def apply_profile(self, name: str) -> None:
         profile = VOICE_PROFILES.get(name)
@@ -532,13 +566,31 @@ class TTSApp(QMainWindow):
         if params["provider"] == "local" and not has_ffmpeg():
             QMessageBox.warning(self, "FFmpeg requerido", "Para usar el proveedor local con salida MP3, instala FFmpeg o cambia a proveedor Edge.")
             return
+        create_srt = self.srt_check.isChecked()
         self._set_busy(True, exclusive=True)
         self.set_status("Generando audio profesional…")
 
         def worker() -> None:
             try:
                 synthesize(text, output_path, enable_mastering=True, **params)
+                try:
+                    append_render_history({
+                        "output_name": output_path.name,
+                        "provider": params.get("provider"),
+                        "profile": params.get("profile"),
+                        "voice": params.get("voice_hint"),
+                        "duration_seconds": 0.0,
+                    })
+                except OSError as exc:
+                    LOGGER.warning("No se pudo guardar el historial del render: %s", exc)
                 message = f"Exportado MP3: {output_path.name}"
+                if create_srt:
+                    subtitle_path = output_path.with_suffix(".srt")
+                    try:
+                        write_srt(text, output_path, subtitle_path)
+                        message += f" · SRT: {subtitle_path.name}"
+                    except (OSError, ValueError) as exc:
+                        LOGGER.warning("No se pudo generar el SRT: %s", exc)
                 if not has_ffmpeg():
                     message += " (sin mastering: FFmpeg no instalado)"
                 self.status_requested.emit(message)

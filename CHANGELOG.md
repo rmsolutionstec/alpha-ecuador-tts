@@ -6,6 +6,10 @@ Este archivo registra cambios importantes del proyecto.
 
 ### Cambiado
 
+- El Paso 3 permite crear opcionalmente un archivo `.srt` junto al MP3, dividido por
+  frases y distribuido sobre la duración del audio.
+- El Paso 3 incorpora un historial local de los últimos renders con fecha, archivo y
+  parámetros básicos; nunca se guarda el texto del guion.
 - La interfaz de escritorio migra de Tkinter a PySide6/Qt, con jerarquía visual,
   tarjetas, controles de voz agrupados y una acción de exportación destacada.
 - La configuración avanzada se concentra en una sección desplegable para simplificar

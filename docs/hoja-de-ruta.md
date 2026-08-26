@@ -29,7 +29,7 @@ Fecha de actualizacion: 2026-08-25
 
 - [x] Separar preescucha rapida y preescucha final en GUI.
 - [x] Guardado local de preferencias de usuario (ultima voz, ruta, perfil).
-- [ ] Historial de renders con metadatos.
+- [x] Historial local de renders con metadatos, sin almacenar guiones.
 - [ ] Mensajes de estado con progreso mas descriptivo.
 
 ## Fase 5 - Operacion y release (pendiente)
@@ -58,11 +58,10 @@ Fecha de actualizacion: 2026-08-25
 
 ## Prioridad inmediata (siguiente sprint)
 
-1. Historial local de renders sin almacenar textos sensibles.
-2. Generacion opcional de subtitulos `.srt`.
-3. Instalador de Windows validado en un equipo limpio.
-4. Activacion de GitHub Sponsors y publicacion inicial.
-5. Demo web limitada y separada del hosting comercial.
+1. Integrar subtítulos `.srt` con marcas de tiempo reales cuando el proveedor lo permita.
+2. Instalador de Windows validado en un equipo limpio.
+3. Activacion de GitHub Sponsors y publicacion inicial.
+4. Demo web limitada y separada del hosting comercial.
 
 ## Auditoria tecnica 2026-05-14
 

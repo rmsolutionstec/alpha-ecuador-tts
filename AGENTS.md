@@ -10,7 +10,8 @@ desarrollador.
 
 - `studio_tts_latino/core.py` es el motor de síntesis; no se debe acoplar a la GUI.
 - `studio_tts_latino/gui.py` usa PySide6/Qt. La distribución actual mantiene Paso 1 y
-  Paso 3 en la columna izquierda; Paso 2 ocupa la columna derecha completa.
+  Paso 3 en la columna izquierda; Paso 2 ocupa la columna derecha completa. El Paso 3
+  ofrece historial local de metadatos y generación opcional de subtítulos `.srt`.
 - Conserva `studio_tts_latino` como paquete interno por compatibilidad. La marca visible
   y el ejecutable son **Alpha Studio TTS Latino** y `AlphaStudioTTSLatino.exe`.
 - Las preferencias nuevas se guardan en `%LOCALAPPDATA%\AlphaStudioTTSLatino`; se leen

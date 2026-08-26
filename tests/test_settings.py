@@ -3,7 +3,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from studio_tts_latino.settings import load_preferences, save_preferences
+from studio_tts_latino.settings import (
+    append_render_history, load_preferences, load_render_history, save_preferences,
+)
 
 
 FIXTURES_DIRECTORY = Path(__file__).resolve().parent / "fixtures"
@@ -51,6 +53,26 @@ class TestLocalSettings(unittest.TestCase):
                 return_value=legacy_preferences_path,
             ):
                 self.assertEqual(load_preferences(), {"profile": "documental"})
+
+    def test_render_history_keeps_metadata_without_script_text(self):
+        history_path = FIXTURES_DIRECTORY / "render-history.json"
+        self.addCleanup(history_path.unlink, missing_ok=True)
+        append_render_history(
+            {
+                "output_name": "locucion.mp3",
+                "provider": "edge",
+                "profile": "locutor-latino",
+                "voice": "es-MX-JorgeNeural",
+                "script": "Este texto nunca debe guardarse",
+            },
+            history_path,
+        )
+
+        history = load_render_history(history_path)
+        self.assertEqual(len(history), 1)
+        self.assertEqual(history[0]["output_name"], "locucion.mp3")
+        self.assertNotIn("script", history[0])
+        self.assertNotIn("Este texto", history_path.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

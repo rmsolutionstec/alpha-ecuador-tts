@@ -60,6 +60,9 @@ python -m pip install ".[build]"
 Verifica el ejecutable en otro equipo antes de distribuirlo. Los directorios `build/`
 y `dist/` se generan localmente y no deben agregarse al repositorio.
 
+El script de build aísla el paquete de Qt de DLL externas que puedan existir en el equipo
+de compilación. Aun así, valida siempre el resultado en una máquina Windows limpia.
+
 ## Crear un instalador de Windows
 
 Después de preparar el ejecutable, instala [Inno Setup](https://jrsoftware.org/isinfo.php)

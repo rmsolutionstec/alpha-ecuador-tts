@@ -37,6 +37,8 @@ Este archivo registra cambios importantes del proyecto.
 
 ### Corregido
 
+- El build de Windows elimina DLL de ICU recogidas accidentalmente desde herramientas
+  externas, evitando que Qt/PySide6 falle al abrir el ejecutable.
 - La conversión local a MP3 indica explícitamente el formato a FFmpeg aunque el archivo
   temporal use la extensión interna `.part`.
 - Las preescuchas se reproducen dentro de la aplicación y ya no dependen de un reproductor

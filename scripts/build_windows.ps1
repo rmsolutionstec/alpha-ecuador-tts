@@ -32,6 +32,17 @@ try {
         throw "No se pudo crear el ejecutable. Instala PyInstaller con pip install '.[build]'."
     }
 
+    # En este entorno PyInstaller puede recoger ICU desde herramientas ajenas (por ejemplo,
+    # Poppler). PySide6 no distribuye esas DLL y Qt usa las bibliotecas del sistema Windows;
+    # dejarlas junto al ejecutable causa un conflicto al cargar Qt6Core.
+    $internalDir = Join-Path $projectRoot "dist\AlphaStudioTTSLatino\_internal"
+    foreach ($foreignIcuDll in @("icuuc.dll", "icudt78.dll")) {
+        $foreignIcuPath = Join-Path $internalDir $foreignIcuDll
+        if (Test-Path -LiteralPath $foreignIcuPath) {
+            Remove-Item -LiteralPath $foreignIcuPath -Force
+        }
+    }
+
     Write-Host "Ejecutable generado en dist\AlphaStudioTTSLatino"
 } finally {
     Pop-Location

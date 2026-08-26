@@ -21,6 +21,10 @@ Este archivo registra cambios importantes del proyecto.
 
 ### Corregido
 
+- La conversión local a MP3 indica explícitamente el formato a FFmpeg aunque el archivo
+  temporal use la extensión interna `.part`.
+- Las preescuchas se reproducen dentro de la aplicación y ya no dependen de un reproductor
+  externo del sistema.
 - El texto de los ajustes avanzados ya no se recorta en la interfaz de Windows.
 
 ## 0.2.0 - 2026-08-25

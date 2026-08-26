@@ -13,6 +13,7 @@ from uuid import uuid4
 
 from PySide6.QtCore import Qt, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices
+from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDialog, QFileDialog, QFormLayout, QFrame,
     QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QListWidget, QMainWindow,
@@ -108,6 +109,11 @@ class TTSApp(QMainWindow):
         super().__init__()
         self._active_jobs = 0
         self._export_active = False
+        self._preview_player = QMediaPlayer(self)
+        self._preview_audio = QAudioOutput(self)
+        self._preview_audio.setVolume(1.0)
+        self._preview_player.setAudioOutput(self._preview_audio)
+        self._preview_path: Path | None = None
         self.setWindowTitle(f"{APP_NAME} {__version__}")
         self.resize(1180, 780)
         self.setMinimumSize(980, 680)
@@ -328,6 +334,13 @@ class TTSApp(QMainWindow):
         self.preview_final_btn = QPushButton("Preescucha final")
         self.preview_final_btn.setToolTip("Genera una preescucha completa con mastering.")
         self.preview_final_btn.clicked.connect(self.preview_final_tts)
+        self.preview_play_btn = QPushButton("Reproducir aquí")
+        self.preview_play_btn.setEnabled(False)
+        self.preview_play_btn.setToolTip("Reproduce la última preescucha dentro de la aplicación.")
+        self.preview_play_btn.clicked.connect(self.play_preview)
+        self.preview_stop_btn = QPushButton("Detener")
+        self.preview_stop_btn.setEnabled(False)
+        self.preview_stop_btn.clicked.connect(self.stop_preview)
         history_btn = QPushButton("Historial")
         history_btn.setToolTip("Consulta los últimos renders sin guardar el guion.")
         history_btn.clicked.connect(self.show_render_history)
@@ -336,6 +349,8 @@ class TTSApp(QMainWindow):
         self.convert_btn.clicked.connect(self.run_tts)
         actions.addWidget(self.preview_quick_btn)
         actions.addWidget(self.preview_final_btn)
+        actions.addWidget(self.preview_play_btn)
+        actions.addWidget(self.preview_stop_btn)
         actions.addWidget(history_btn)
         actions.addStretch()
         actions.addWidget(self.convert_btn)
@@ -417,6 +432,7 @@ class TTSApp(QMainWindow):
             LOGGER.warning("No se pudieron guardar las preferencias: %s", exc)
 
     def closeEvent(self, event) -> None:  # type: ignore[override]
+        self._preview_player.stop()
         self._save_preferences()
         event.accept()
 
@@ -608,7 +624,19 @@ class TTSApp(QMainWindow):
 
     @Slot(str)
     def _open_preview(self, path: str) -> None:
-        QDesktopServices.openUrl(QUrl.fromLocalFile(path))
+        self._preview_path = Path(path)
+        self._preview_player.setSource(QUrl.fromLocalFile(path))
+        self.preview_play_btn.setEnabled(True)
+        self.preview_stop_btn.setEnabled(True)
+        self._preview_player.play()
+
+    def play_preview(self) -> None:
+        if self._preview_path and self._preview_path.is_file():
+            self._preview_player.play()
+
+    def stop_preview(self) -> None:
+        self._preview_player.stop()
+
 
 
 def main() -> int:

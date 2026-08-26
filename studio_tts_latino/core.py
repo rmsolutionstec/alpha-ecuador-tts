@@ -578,6 +578,8 @@ def convert_wav_to_mp3(source_wav: Path, target_mp3: Path) -> None:
         str(source_wav),
         "-codec:a",
         "libmp3lame",
+        "-f",
+        "mp3",
         "-b:a",
         OUTPUT_BITRATE,
         str(target_mp3),

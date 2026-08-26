@@ -22,6 +22,7 @@ voces en espanol latino. Es un producto de **Alpha Ecuador**, desarrollado por
 - Exportacion MP3 y mastering opcional con FFmpeg.
 - Generacion opcional de subtitulos `.srt` por frases junto al MP3.
 - Preescucha rapida y preescucha final.
+- Reproduccion integrada de la ultima preescucha dentro de la ventana.
 - Historial local de renders con metadatos, sin guardar guiones.
 - Preferencias locales, mensajes de estado y pruebas automatizadas.
 - Interfaz de escritorio y linea de comandos.

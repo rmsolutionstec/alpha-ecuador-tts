@@ -13,6 +13,10 @@ desarrollador.
   Paso 3 en la columna izquierda; Paso 2 ocupa la columna derecha completa. El Paso 3
   ofrece historial local de metadatos, generación opcional de subtítulos `.srt` y
   reproducción integrada de preescuchas.
+- La voz seleccionada explícitamente tiene prioridad. El selector muestra voces Edge con
+  el proveedor `edge` y consulta las voces instaladas cuando se selecciona `local`.
+- La opción de preferencia masculina se mantiene desactivada por defecto y los perfiles
+  de la GUI no deben modificarla; es una decisión explícita del usuario.
 - Conserva `studio_tts_latino` como paquete interno por compatibilidad. La marca visible
   y el ejecutable son **Alpha Studio TTS Latino** y `AlphaStudioTTSLatino.exe`.
 - Las preferencias nuevas se guardan en `%LOCALAPPDATA%\AlphaStudioTTSLatino`; se leen

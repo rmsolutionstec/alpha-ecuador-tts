@@ -12,7 +12,6 @@ from urllib.parse import urlparse
 from uuid import uuid4
 
 from PySide6.QtCore import Qt, QUrl, Signal, Slot
-from PySide6.QtGui import QDesktopServices
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDialog, QFileDialog, QFormLayout, QFrame,
@@ -25,7 +24,7 @@ from . import APP_NAME, COMPANY_NAME, DEVELOPER_NAME, PROJECT_WEBSITE, __version
 from .core import (
     DEFAULT_MASTERING_PRESET, DEFAULT_PROFILE, DEFAULT_PRONUNCIATION_FILE,
     DELIVERY_MODES, EDGE_DEFAULT_VOICE, EDGE_STYLES, EDGE_VOICE_OPTIONS,
-    EMOTION_PRESETS, MASTERING_PRESETS, VOICE_PROFILES, has_ffmpeg,
+    EMOTION_PRESETS, MASTERING_PRESETS, VOICE_PROFILES, has_ffmpeg, list_local_voice_options,
     normalize_output_path, synthesize,
 )
 from .settings import (
@@ -53,6 +52,10 @@ QLineEdit, QComboBox, QTextEdit { background: #FFFFFF; color: #172B4D; border: 1
 QTextEdit { padding: 12px; }
 QLineEdit:focus, QComboBox:focus, QTextEdit:focus { border: 2px solid #3A86E9; }
 QComboBox::drop-down { border: 0; width: 28px; }
+QComboBox QAbstractItemView { background: #FFFFFF; color: #172B4D; border: 1px solid #9DB9D6; outline: 0; padding: 4px; selection-background-color: #2475D0; selection-color: #FFFFFF; }
+QComboBox QAbstractItemView::item { min-height: 28px; padding: 4px 8px; border-radius: 4px; }
+QComboBox QAbstractItemView::item:hover { background: #E8F1FC; color: #102A43; }
+QComboBox QAbstractItemView::item:selected { background: #2475D0; color: #FFFFFF; }
 QPushButton { background: #FFFFFF; color: #172B4D; border: 1px solid #C8D5E3; border-radius: 7px; padding: 8px 12px; font: 600 10pt "Segoe UI"; }
 QPushButton:hover { background: #EDF4FC; border-color: #82AEE0; }
 QPushButton:disabled { color: #97A6B5; background: #F2F5F8; border-color: #E1E8EF; }
@@ -153,6 +156,7 @@ class TTSApp(QMainWindow):
         combo = QComboBox()
         combo.addItems(values)
         combo.setEditable(editable)
+        combo.setMaxVisibleItems(8)
         combo.setCurrentText(current)
         return combo
 
@@ -253,13 +257,15 @@ class TTSApp(QMainWindow):
         form.setContentsMargins(10, 14, 10, 10)
         form.setSpacing(10)
         self.provider_combo = self._combo(["edge", "local"], "edge")
+        self.provider_combo.currentTextChanged.connect(self._sync_voice_options)
         self.style_combo = self._combo(EDGE_STYLES, "narration-professional")
         self.delivery_combo = self._combo(sorted(DELIVERY_MODES), "podcast")
         self.mastering_combo = self._combo(sorted(MASTERING_PRESETS), DEFAULT_MASTERING_PRESET)
         self.pause_slider, self.pause_value = self._slider(0, 900, 250, " ms")
         self.volume_slider, self.volume_value = self._slider(50, 100, 100, "%")
-        self.male_check = QCheckBox("Preferir voz masculina")
-        self.male_check.setChecked(True)
+        self.male_check = QCheckBox("Preferir voz masculina (opcional)")
+        self.male_check.setToolTip("Actívala solo si no elegirás una voz concreta y deseas esa preferencia.")
+        self.male_check.setChecked(False)
         self.natural_mode_check = QCheckBox("Modo locutor natural (recomendado)")
         self.natural_mode_check.setChecked(True)
         form.addRow("Proveedor", self.provider_combo)
@@ -270,7 +276,32 @@ class TTSApp(QMainWindow):
         form.addRow("Pausa entre líneas", self._slider_row(self.pause_slider, self.pause_value))
         form.addRow("", self.male_check)
         form.addRow("", self.natural_mode_check)
+        self._sync_voice_options(self.provider_combo.currentText())
         return widget
+
+    def _sync_voice_options(self, provider: str) -> None:
+        """Muestra voces compatibles con el proveedor elegido sin ocultar una entrada manual."""
+        previous = self.voice_combo.currentText().strip()
+        if provider == "local":
+            values = list_local_voice_options()
+            if previous in EDGE_VOICE_OPTIONS and values:
+                previous = values[0]
+            self.voice_combo.setToolTip("Voces instaladas en este equipo. También puedes escribir parte del nombre.")
+        else:
+            values = EDGE_VOICE_OPTIONS
+            if previous and previous not in values and previous not in EDGE_VOICE_OPTIONS:
+                previous = EDGE_DEFAULT_VOICE
+            self.voice_combo.setToolTip("Voces neurales latinas de Microsoft Edge. Puedes escribir una voz compatible.")
+
+        self.voice_combo.blockSignals(True)
+        self.voice_combo.clear()
+        self.voice_combo.addItems(values)
+        self.voice_combo.setEditable(True)
+        self.voice_combo.setCurrentText(previous or (values[0] if values else ""))
+        self.voice_combo.blockSignals(False)
+        is_edge = provider == "edge"
+        self.style_combo.setEnabled(is_edge)
+        self.natural_mode_check.setEnabled(is_edge)
 
     def _slider(self, minimum: int, maximum: int, value: int, suffix: str) -> tuple[QSlider, QLabel]:
         slider = QSlider(Qt.Orientation.Horizontal)
@@ -497,7 +528,6 @@ class TTSApp(QMainWindow):
         self.rate_slider.setValue(int(profile.get("rate", self.rate_slider.value())))
         self.volume_slider.setValue(int(float(profile.get("volume", 1.0)) * 100))
         self.voice_combo.setCurrentText(str(profile.get("voice_hint", EDGE_DEFAULT_VOICE)))
-        self.male_check.setChecked(bool(profile.get("prefer_male", self.male_check.isChecked())))
         self.style_combo.setCurrentText(str(profile.get("style", self.style_combo.currentText())))
         self.pause_slider.setValue(int(profile.get("pause_ms", self.pause_slider.value())))
         if hasattr(self, "status_label"):

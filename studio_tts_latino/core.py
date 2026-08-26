@@ -275,6 +275,17 @@ def pick_voice(engine: pyttsx3.Engine, hint: Optional[str], prefer_male: bool = 
     return None
 
 
+def list_local_voice_options() -> list[str]:
+    """Lista nombres de voces locales para mostrarlos en la interfaz."""
+    try:
+        engine = pyttsx3.init()
+        names = [str(voice.name).strip() for voice in engine.getProperty("voices") or []]
+    except Exception as exc:
+        LOGGER.warning("No se pudieron consultar las voces locales: %s", exc)
+        return []
+    return sorted({name for name in names if name}, key=str.casefold)
+
+
 def pick_edge_voice(hint: Optional[str], prefer_male: bool) -> str:
     if hint:
         normalized_hint = hint.strip()

@@ -6,6 +6,10 @@ Este archivo registra cambios importantes del proyecto.
 
 ### Cambiado
 
+- La preferencia de voz masculina de la interfaz es opcional, inicia desactivada y no se
+  altera al cambiar de perfil.
+- Los selectores de la interfaz usan un menú de alto contraste. El selector de voz se
+  actualiza según el proveedor y muestra las voces locales instaladas al elegir `local`.
 - El Paso 3 permite crear opcionalmente un archivo `.srt` junto al MP3, dividido por
   frases y distribuido sobre la duración del audio.
 - El Paso 3 incorpora un historial local de los últimos renders con fecha, archivo y

@@ -1,6 +1,7 @@
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 from uuid import uuid4
 
 import tts
@@ -11,6 +12,19 @@ FIXTURES_DIRECTORY = Path(__file__).resolve().parent / "fixtures"
 
 
 class TestTTSUnit(unittest.TestCase):
+    def test_local_voice_options_use_installed_voice_names(self):
+        engine = SimpleNamespace(
+            getProperty=lambda name: [
+                SimpleNamespace(name="Microsoft Elena"),
+                SimpleNamespace(name="Microsoft Jorge"),
+            ]
+        )
+        with patch("studio_tts_latino.core.pyttsx3.init", return_value=engine):
+            self.assertEqual(
+                core.list_local_voice_options(),
+                ["Microsoft Elena", "Microsoft Jorge"],
+            )
+
     def test_preprocess_text_applies_replacements(self):
         source = "Sr. Gomez\n\n\nDr. Perez\t\thabla"
         out = tts.preprocess_text(source)

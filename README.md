@@ -16,6 +16,9 @@ voces en espanol latino. Es un producto de **Alpha Ecuador**, desarrollado por
 
 - Voces latinas en linea mediante Edge TTS.
 - Proveedor local para trabajar sin internet, segun las voces instaladas en el equipo.
+- Selector de voces adaptable al proveedor, con menús de alto contraste y entrada manual
+  para una voz compatible.
+- La preferencia de voz masculina es opcional y nunca se activa por defecto.
 - Perfiles de locucion para noticias, documentales, anuncios y narraciones.
 - Ajustes reales de ritmo, tono, emocion y pausas orientativas.
 - Diccionario personalizable para siglas, marcas y palabras dificiles.
